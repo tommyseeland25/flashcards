@@ -2,7 +2,7 @@
 
 A fast, ad-free, offline-first flashcard app. No accounts, no tracking, no backend: all data lives in your browser's IndexedDB.
 
-**Status:** Phases 1 (core), 2 (import/export) and 3 (study modes) done. See the roadmap below.
+**Status:** Phases 1-4 done (core, import/export, study modes, spaced repetition and stats). See the roadmap below.
 
 ## Run it
 
@@ -29,6 +29,8 @@ On first launch a sample Spanish deck is added. In dev mode the home page has a 
 | Learn / Write | Enter       | submit typed answer, then continue |
 | Learn  | 1–4                | pick a multiple-choice option  |
 | Learn / Write | O (after a miss) | "I was right" override    |
+| Review | Space              | show answer, then Space = Good |
+| Review | 1 / 2 / 3 / 4      | Again / Hard / Good / Easy     |
 | Test   | Tab, arrows, Enter | native radios/inputs, Enter submits |
 | Match  | Tab, Enter / Space | select tiles                   |
 
@@ -50,19 +52,25 @@ src/
     testGenerator.js choice/true-false/written questions, distractors, scoring
     matchGame.js     pick unique pairs, tiles, match rule, best-time helpers
     stats.js         per-card correct/incorrect/streak update
+    scheduler.js     SM-2 spaced repetition: schedule(), due/new counts, review queue
+    analytics.js     study streak, heatmap grid, per-deck summaries
   data/            the ONLY code that touches IndexedDB
     db.js            schema + versioned migrations
     decks.js cards.js   repository functions (CRUD, duplicate, reorder)
     backup.js        export everything, import as new decks, restore (replace / merge)
     stats.js         record answers and sessions; small meta store (personal bests)
+    overview.js      cross-deck reads: all cards, due counts, stats page data
     seed.js          sample deck + large test deck
   ui/
     dom.js           h() element helper, debounce
     virtualList.js   windowed list for fixed-height rows (keeps 1,000+ card decks fast)
     toast.js download.js
     studyShell.js    header + mode switcher shared by all study modes
+    flipCard.js      two-sided flip card (Flashcards + Review)
+    heatmap.js       activity grid with tooltip and table fallback
     quiz.js          reusable question widgets (multiple choice, typed answer, continue panel)
     views/           home.js (deck list), deckEditor.js, study.js,
+                     reviewView.js (#/review[/:deckId]), statsView.js (#/stats),
                      learnView.js, writeView.js, testView.js, matchView.js (#/learn|write|test|match/:id),
                      importView.js (#/import[/:deckId]), dataView.js (#/data: backup & restore)
   styles/          base.css (theme variables), components.css
@@ -82,6 +90,25 @@ Layering: `ui → data` and `ui → logic`. `logic` never imports from `ui` or `
   keeps accents. `big / large` or `car; automobile` accept either one, and `(parenthesized)` text is
   optional. A one-typo answer on a 5+ letter word shows "Close!" and can be overridden with "I was right".
 - Every answer updates per-card stats and each finished session is logged, ready for the Phase 4 stats page.
+
+## Spaced repetition (Review mode)
+
+Uses a simplified **SM-2**. Each card has `ease` (starts 2.5, floor 1.3), `interval` (days), `repetitions`
+and `lapses`. Rating a card Good twice gives gaps of 1 and 6 days; after that the gap is multiplied by
+`ease` (so 15, 38, ... days). Hard grows more slowly and lowers ease, Easy grows faster and raises it,
+and Again resets the ladder, lowers ease by 0.2, and brings the card back in 10 minutes.
+All the math is in `src/logic/scheduler.js`, commented line by line.
+
+- **Why SM-2 over Leitner:** Leitner boxes (fixed gaps like 1, 3, 7 days) are simpler to explain, but
+  every card in a box gets the same gap. SM-2 gives each card its own gap, so easy cards fade out and
+  hard ones return often, which means fewer reviews for the same retention. The cost is a few more
+  numbers per card. The scheduler is one pure function, so a Leitner option could be added beside it.
+- **Due today** = scheduled for any time up to the end of today. Cards become due at the *start* of a
+  day, so reviewing at 8am or 8pm doesn't shift tomorrow's schedule.
+- **New cards** are introduced 10 per session, after the due cards. Start another session for more.
+- The home page shows a due/new banner and per-deck badges. `#/review` covers all decks.
+- **Stats** (`#/stats`): streak, cards mastered (interval of 21+ days), due today, per-deck accuracy,
+  and a 26-week activity heatmap. Study history is stored as session records and is part of backups.
 
 ## Importing and exporting
 

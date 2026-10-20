@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { listDecks, createDeck, deleteDeck, duplicateDeck } from '../../data/decks.js';
 import { createLargeTestDeck } from '../../data/seed.js';
+import { loadDueCounts } from '../../data/overview.js';
 
 const SORTS = {
   updated: ['Recently edited', (a, b) => b.updatedAt - a.updatedAt],
@@ -14,23 +15,44 @@ const matchesQuery = (deck, q) =>
 
 export async function homeView(_params, root) {
   let decks = await listDecks();
+  let counts = await loadDueCounts();
   let query = '';
   let sort = 'updated';
 
   const list = h('ul', { class: 'deck-list' });
+  const banner = h('div', { class: 'banner', hidden: true });
 
   async function reload() {
-    decks = await listDecks();
+    [decks, counts] = await Promise.all([listDecks(), loadDueCounts()]);
     draw();
   }
 
+  function drawBanner() {
+    const all = [...counts.values()];
+    const due = all.reduce((n, c) => n + c.due, 0);
+    const fresh = all.reduce((n, c) => n + c.new, 0);
+    banner.hidden = due + fresh === 0;
+    banner.replaceChildren(
+      h('span', {}, due > 0 ? h('strong', {}, `${due} card${due === 1 ? '' : 's'} due today`) : 'Nothing due today',
+        fresh > 0 && ` · ${fresh} new`),
+      h('a', { class: 'btn primary', href: '#/review' }, due > 0 ? 'Review now' : 'Learn new cards'),
+    );
+  }
+
   function draw() {
+    drawBanner();
     const shown = decks.filter((d) => matchesQuery(d, query)).sort(SORTS[sort][1]);
     list.replaceChildren(
       ...(shown.length
         ? shown.map(deckItem)
         : [h('li', { class: 'empty' }, decks.length ? 'No decks match your search.' : 'No decks yet — create one!')]),
     );
+  }
+
+  function dueBadge(deck) {
+    const c = counts.get(deck.id);
+    if (!c || c.due + c.new === 0) return null;
+    return h('p', { class: 'due' }, c.due > 0 && h('span', { class: 'badge' }, `${c.due} due`), c.new > 0 && h('span', { class: 'muted' }, ` ${c.new} new`));
   }
 
   function deckItem(deck) {
@@ -44,6 +66,7 @@ export async function homeView(_params, root) {
         deck.description && h('p', {}, deck.description),
         h('p', { class: 'muted' }, `${deck.cardCount} card${deck.cardCount === 1 ? '' : 's'}`,
           deck.tags.length ? ` · ${deck.tags.join(', ')}` : ''),
+        dueBadge(deck),
       ),
       h(
         'div',
@@ -66,6 +89,7 @@ export async function homeView(_params, root) {
     h('header', { class: 'topbar' },
       h('h1', { class: 'grow' }, 'Flashcards'),
       h('a', { class: 'btn', href: '#/import' }, 'Import'),
+      h('a', { class: 'btn', href: '#/stats' }, 'Stats'),
       h('a', { class: 'btn', href: '#/data' }, 'Backup'),
       h('button', {
         class: 'btn primary',
@@ -73,6 +97,7 @@ export async function homeView(_params, root) {
       }, 'New deck'),
     ),
     h('main', { class: 'page' },
+      banner,
       h('div', { class: 'toolbar' },
         h('input', {
           type: 'search', placeholder: 'Search decks…', 'aria-label': 'Search decks',

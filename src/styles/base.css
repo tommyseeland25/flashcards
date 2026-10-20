@@ -12,6 +12,8 @@
   --ok: #2b8a3e;
   --star: #e8a500;
   --radius: 10px;
+  /* heatmap: one blue ramp, light -> dark = more activity (level 0 is a neutral track) */
+  --heat-0: #e4e7ee; --heat-1: #9ec5f4; --heat-2: #5598e7; --heat-3: #256abf; --heat-4: #104281;
   --shadow: 0 2px 10px rgb(0 0 0 / 0.08);
   color-scheme: light;
 }
@@ -20,6 +22,7 @@
     --bg: #12141a; --surface: #1c1f28; --text: #e8eaf0; --muted: #9aa1b2;
     --border: #2f3442; --accent: #7c93ff; --accent-text: #10131c; --danger: #ff8787; --ok: #69db7c;
     --star: #ffc933; --shadow: 0 2px 10px rgb(0 0 0 / 0.5);
+    --heat-0: #2a2f3c; --heat-1: #184f95; --heat-2: #2a78d6; --heat-3: #6da7ec; --heat-4: #b7d3f6;
     color-scheme: dark;
   }
 }
@@ -27,6 +30,7 @@
   --bg: #12141a; --surface: #1c1f28; --text: #e8eaf0; --muted: #9aa1b2;
   --border: #2f3442; --accent: #7c93ff; --accent-text: #10131c; --danger: #ff8787; --ok: #69db7c;
   --star: #ffc933; --shadow: 0 2px 10px rgb(0 0 0 / 0.5);
+  --heat-0: #2a2f3c; --heat-1: #184f95; --heat-2: #2a78d6; --heat-3: #6da7ec; --heat-4: #b7d3f6;
   color-scheme: dark;
 }
 
