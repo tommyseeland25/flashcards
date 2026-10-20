@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { generateTest, gradeTest, makeChoiceOptions } from '../src/logic/testGenerator.js';
 
+/** Small seeded random generator (mulberry32) so tests that need "some of each" are deterministic, not 1-in-4096 flaky. */
+const seeded = (seed) => () => {
+  seed = (seed + 0x6d2b79f5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
 const cards = Array.from({ length: 12 }, (_, i) => ({ id: `c${i}`, term: `term${i}`, definition: `def${i}` }));
 
 describe('makeChoiceOptions', () => {
@@ -32,9 +40,13 @@ describe('generateTest', () => {
     expect(qs.map((q) => q.type)).toEqual(['written']);
   });
   it('builds true/false questions whose answer matches what is shown', () => {
-    const qs = generateTest(cards, { types: ['truefalse'], count: 12, random: Math.random });
-    for (const q of qs) expect(q.answer).toBe(q.shown === q.definition);
-    expect(qs.some((q) => !q.answer)).toBe(true);
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const qs = generateTest(cards, { types: ['truefalse'], count: 12, random: seeded(seed) });
+      for (const q of qs) expect(q.answer).toBe(q.shown === q.definition);
+      // With a fixed seed this is guaranteed, not just likely: both kinds of statement appear.
+      expect(qs.some((q) => q.answer)).toBe(true);
+      expect(qs.some((q) => !q.answer)).toBe(true);
+    }
   });
 });
 
