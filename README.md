@@ -2,7 +2,7 @@
 
 A fast, ad-free, offline-first flashcard app. No accounts, no tracking, no backend: all data lives in your browser's IndexedDB.
 
-**Status:** Phases 1-4 done (core, import/export, study modes, spaced repetition and stats). See the roadmap below.
+**Status:** all five phases done (core, import/export, study modes, spaced repetition and stats, polish). See the roadmap below.
 
 ## Run it
 
@@ -10,7 +10,7 @@ A fast, ad-free, offline-first flashcard app. No accounts, no tracking, no backe
 npm install
 npm run dev        # dev server at http://localhost:5173
 npm run build      # production build into dist/
-npm run preview    # serve the production build
+npm run preview    # serve the production build (this is where the offline service worker runs)
 npm test           # unit tests (Vitest)
 ```
 
@@ -23,9 +23,12 @@ On first launch a sample Spanish deck is added. In dev mode the home page has a 
 |--------|--------------------|--------------------------------|
 | Editor | Tab                | term → definition              |
 | Editor | Enter              | new card below                 |
+| Editor | Shift+Enter        | new line inside a term/definition |
+| Editor | Alt+↑ / Alt+↓      | move the card up / down        |
+| Anywhere | ?                | show the shortcuts overlay     |
 | Study  | Space / Enter / ↑↓ | flip                           |
 | Study  | ← →                | previous / next                |
-| Study  | S                  | star / unstar                  |
+| Study  | S, L               | star / unstar, listen          |
 | Learn / Write | Enter       | submit typed answer, then continue |
 | Learn  | 1–4                | pick a multiple-choice option  |
 | Learn / Write | O (after a miss) | "I was right" override    |
@@ -38,7 +41,8 @@ On first launch a sample Spanish deck is added. In dev mode the home page has a 
 
 ```
 src/
-  main.js          boot: seed data, start router
+  main.js          boot: shortcuts, service worker, seed data, start router
+  pwa.js           service worker registration + "new version, Reload" toast
   router.js        hash router (#/, #/deck/:id, #/study/:id); runs each view's cleanup on leave
   logic/           PURE functions, no DOM or database, unit-tested
     ordering.js      card ordering by midpoint (one write per move/insert)
@@ -59,6 +63,7 @@ src/
     decks.js cards.js   repository functions (CRUD, duplicate, reorder)
     backup.js        export everything, import as new decks, restore (replace / merge)
     stats.js         record answers and sessions; small meta store (personal bests)
+    images.js        picture Blobs, object-URL cache, base64 for backups, orphan cleanup
     overview.js      cross-deck reads: all cards, due counts, stats page data
     seed.js          sample deck + large test deck
   ui/
@@ -66,7 +71,11 @@ src/
     virtualList.js   windowed list for fixed-height rows (keeps 1,000+ card decks fast)
     toast.js download.js
     studyShell.js    header + mode switcher shared by all study modes
-    flipCard.js      two-sided flip card (Flashcards + Review)
+    theme.js         light / dark / system (saved in localStorage, applied before first paint)
+    shortcuts.js     the ? help dialog
+    speech.js        text to speech (Web Speech API)
+    imageTools.js    shrink chosen pictures before storing them
+    flipCard.js      two-sided flip card (Flashcards + Review), accessible
     heatmap.js       activity grid with tooltip and table fallback
     quiz.js          reusable question widgets (multiple choice, typed answer, continue panel)
     views/           home.js (deck list), deckEditor.js, study.js,
@@ -74,6 +83,8 @@ src/
                      learnView.js, writeView.js, testView.js, matchView.js (#/learn|write|test|match/:id),
                      importView.js (#/import[/:deckId]), dataView.js (#/data: backup & restore)
   styles/          base.css (theme variables), components.css
+public/            manifest, icons, and sw.js (the service worker; stamped at build time)
+vite.config.js     Vite settings + the small plugin that stamps sw.js
 tests/             Vitest tests for logic/ and the data layer (fake-indexeddb)
 ```
 
@@ -122,6 +133,49 @@ All the math is in `src/logic/scheduler.js`, commented line by line.
   sanitized before they touch the database.
 - Text export turns tabs and newlines inside a card into spaces, because the format can't represent them.
 
+## Offline use and installing (PWA)
+
+The production build is a static folder (`dist/`): host it anywhere over HTTPS (GitHub Pages, Netlify,
+Cloudflare Pages, any web server; it uses relative URLs, so a sub-folder is fine). Open it once online and
+the service worker (`public/sw.js`) downloads the whole app; after that it opens with no network, and
+your browser offers *Install* / *Add to Home Screen*. Your cards live in IndexedDB on the device, so they
+are available offline too. `npm run dev` deliberately does NOT register the service worker (it would
+cache stale files while you edit); use `npm run build && npm run preview` to test offline behaviour.
+
+- **Updates:** when you deploy a new build, installed copies download it in the background and show a
+  "new version is ready, Reload" message. Pages already open keep working on the old files until then.
+- **Why a hand-written service worker** instead of `vite-plugin-pwa`: it's ~40 readable lines with no new
+  dependency (the plugin pulls in Workbox and many packages). The trade-off is that caching strategy
+  is basic (cache everything at install, cache first). That suits an app with no server data.
+- **Data safety:** the app asks the browser for *persistent storage* so it is not evicted when space is low.
+  Browsers may still refuse, and clearing site data deletes your decks, so use *Backup* now and then.
+
+## Polish features
+
+- **Themes:** the `◐` button on the home page cycles System, Light and Dark.
+- **Text to speech:** set a *term language* and *definition language* (for example `es-ES`, `en-US`) on the
+  deck editor page, then press 🔊 or `L` while studying or reviewing. It uses your device's built-in voices.
+- **Pictures:** use the 🖼 button on a card row. Pictures are shrunk (max 800 px, WebP) and stored in
+  IndexedDB, shown on the term side and above quiz prompts, and included in backups.
+- **Accessibility:** keyboard-only use throughout (including Alt+↑/↓ to reorder cards), focus moves to the
+  page content after navigation, each page has a title and heading, live regions announce flips and
+  feedback, control borders and text meet WCAG AA contrast in both themes, and reduced-motion is honoured.
+  An automated axe-core scan of every page in both themes reports no violations (that is not a substitute
+  for testing with a screen reader).
+
+## Extending
+
+The architecture leaves room for the ideas you listed:
+
+- **Cloud sync:** all reads/writes go through `src/data/`. Ids are UUIDs and decks carry `updatedAt`, and
+  `logic/backup.js` already has a merge rule ("newer deck wins"). A sync layer would reuse those.
+- **Sharing a deck:** a deck export is already a self-contained JSON file (`exportBackup([deckId])`);
+  sharing by link would encode that JSON (compressed) in the URL, or upload it somewhere.
+- **Markdown / LaTeX:** card text is rendered in one place per mode (`flipCard.js`, `promptBlock`
+  in `quiz.js`, the Test view). Add a `renderCardText()` helper and use it there.
+- **Cloze deletions:** add a `type` field to cards (a schema version bump in `data/db.js`), generate
+  questions from it in `logic/testGenerator.js` / `learnEngine.js`, and extend the editor row.
+
 ## Design notes
 
 - **Vanilla JS, no framework:** smallest bundle (about 7 KB gzipped), and nothing to learn first. Views
@@ -138,4 +192,4 @@ All the math is in `src/logic/scheduler.js`, commented line by line.
 2. Import/export: pasted text (Quizlet format), CSV, JSON, full backup
 3. Study modes: Learn, Write, Test, Match
 4. Spaced repetition (SM-2) and stats
-5. Polish: themes, text-to-speech, images, shortcuts overlay, PWA, accessibility
+5. Polish (done): themes, text-to-speech, images, shortcuts overlay, PWA, accessibility
