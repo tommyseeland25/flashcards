@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildBackup, validateBackup, withFreshIds, decksToRestore } from '../src/logic/backup.js';
 
-const deck = { id: 'd1', title: 'Deck', description: '', tags: ['x'], createdAt: 1, updatedAt: 2 };
+const deck = { id: 'd1', title: 'Deck', description: '', tags: ['x'], termLang: 'es-ES', definitionLang: '', createdAt: 1, updatedAt: 2 };
 const card = (id, order, term) => ({ id, deckId: 'd1', order, term, definition: term.toUpperCase(), imageId: null, starred: false, ease: 2.5, interval: 0, dueDate: null, repetitions: 0, lapses: 0 });
 
 describe('backup', () => {
@@ -16,6 +16,11 @@ describe('backup', () => {
     expect(errors).toBeUndefined();
     expect(restored.decks[0]).toEqual(backup.decks[0]);
     expect(restored.cardStats).toEqual(backup.cardStats);
+  });
+  it('accepts decks from before text-to-speech languages existed', () => {
+    const { termLang, definitionLang, ...old } = deck;
+    const { backup: restored } = validateBackup(JSON.stringify({ ...backup, decks: [{ ...old, cards: [] }] }));
+    expect(restored.decks[0]).toMatchObject({ termLang: '', definitionLang: '' });
   });
   it('rejects non-JSON, foreign JSON, and newer versions', () => {
     expect(validateBackup('nope').errors[0]).toMatch(/not valid JSON/);

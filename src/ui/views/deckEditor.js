@@ -7,7 +7,7 @@ import { buildBackup } from '../../logic/backup.js';
 import { getDeck, updateDeck } from '../../data/decks.js';
 import { listCards, addCard, newCardAfter, saveCard, deleteCard, moveCard } from '../../data/cards.js';
 
-const ROW_HEIGHT = 60;
+const ROW_HEIGHT = 64; // fits a two-line textarea; the virtual list needs fixed-height rows
 
 export async function deckEditorView([deckId], root) {
   let deck = await getDeck(deckId);
@@ -36,13 +36,23 @@ export async function deckEditorView([deckId], root) {
   const dropLine = h('div', { class: 'drop-line', hidden: true });
   list.content.append(dropLine);
   const count = h('span', { class: 'muted' });
+  const live = h('div', { class: 'sr-only', 'aria-live': 'polite' }); // announcements for screen readers
+  const announce = (text) => { live.textContent = text; };
 
   function renderRow(card) {
+    // A textarea (not an input) so multi-line cards keep their line breaks when edited.
+    // Enter adds a card; Shift+Enter inserts a new line; Alt+Up/Down moves the card.
     const field = (name, label) =>
-      h('input', {
-        value: card[name], placeholder: label, 'aria-label': label, class: 'cell',
+      h('textarea', {
+        value: card[name], placeholder: label, 'aria-label': label, class: 'cell', rows: 2,
         oninput: (e) => { card[name] = e.target.value; edited(card); },
-        onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); insertAfter(card); } },
+        onkeydown: (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); insertAfter(card); }
+          else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            e.preventDefault();
+            moveBy(card, e.key === 'ArrowUp' ? -1 : 1, label);
+          }
+        },
       });
 
     const star = h('button', {
@@ -58,7 +68,7 @@ export async function deckEditorView([deckId], root) {
     }, card.starred ? '★' : '☆');
 
     return h('div', { class: 'card-row' },
-      h('span', { class: 'handle', title: 'Drag to reorder', onpointerdown: (e) => startDrag(e, card) }, '⋮⋮'),
+      h('span', { class: 'handle', title: 'Drag to reorder (or Alt+↑/↓ in a field)', 'aria-hidden': 'true', onpointerdown: (e) => startDrag(e, card) }, '⋮⋮'),
       h('span', { class: 'row-num' }, ''),
       field('term', 'Term'),
       field('definition', 'Definition'),
@@ -89,7 +99,23 @@ export async function deckEditorView([deckId], root) {
     redraw();
     list.scrollToIndex(index + 1);
     numberRows();
-    list.rowFor(fresh.id)?.querySelector('input').focus();
+    list.rowFor(fresh.id)?.querySelector('textarea').focus();
+  }
+
+  /** Keyboard reorder: Alt+Up / Alt+Down in a field. Focus stays on the same field of the same card. */
+  async function moveBy(card, delta, fieldLabel) {
+    const from = cards.indexOf(card);
+    const to = from + delta;
+    if (to < 0 || to >= cards.length) return;
+    const saving = moveCard(cards, from, to); // sets the new order synchronously, then saves
+    cards.splice(from, 1);
+    cards.splice(to, 0, card);
+    redraw();
+    list.scrollToIndex(to);
+    numberRows();
+    list.rowFor(card.id)?.querySelector(`[aria-label="${fieldLabel}"]`)?.focus();
+    announce(`Card moved to position ${to + 1} of ${cards.length}`);
+    await saving;
   }
 
   async function remove(card) {
@@ -151,10 +177,10 @@ export async function deckEditorView([deckId], root) {
   }
 
   // ---- header fields ----
-  const textField = (label, key, placeholder) =>
+  const textField = (label, key, placeholder, extra = {}) =>
     h('input', {
       value: Array.isArray(deck[key]) ? deck[key].join(', ') : deck[key], placeholder, 'aria-label': label,
-      class: `deck-${key}`,
+      class: `deck-${key}`, ...extra,
       oninput: (e) => {
         deck[key] = key === 'tags' ? e.target.value.split(',').map((t) => t.trim()).filter(Boolean) : e.target.value;
         saveDeck();
@@ -176,7 +202,14 @@ export async function deckEditorView([deckId], root) {
       textField('Deck title', 'title', 'Deck title'),
       textField('Description', 'description', 'Description (optional)'),
       textField('Tags', 'tags', 'Tags, comma separated'),
+      h('div', { class: 'toolbar' },
+        textField('Term language for text to speech', 'termLang', 'Term language (e.g. es-ES)', { list: 'speech-langs' }),
+        textField('Definition language for text to speech', 'definitionLang', 'Definition language (e.g. en-US)', { list: 'speech-langs' }),
+        h('datalist', { id: 'speech-langs' },
+          ['en-US', 'en-GB', 'es-ES', 'es-MX', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'nl-NL', 'ja-JP', 'zh-CN', 'ko-KR', 'ru-RU', 'ar-SA', 'hi-IN']
+            .map((code) => h('option', { value: code })))),
       list.el,
+      live,
       h('button', { class: 'btn', onclick: () => insertAfter(cards[cards.length - 1]) }, '+ Add card'),
       h('div', { class: 'toolbar export-bar' },
         h('a', { class: 'btn', href: `#/import/${deckId}` }, 'Import cards…'),
@@ -187,11 +220,11 @@ export async function deckEditorView([deckId], root) {
         exportButton('JSON', 'json', 'application/json', () =>
           JSON.stringify(buildBackup({ decks: [deck], cards: filled() }), null, 2)),
       ),
-      h('p', { class: 'muted hint' }, 'Tab: term → definition · Enter: new card below · Drag ⋮⋮ to reorder'),
+      h('p', { class: 'muted hint' }, 'Tab: term → definition · Enter: new card · Shift+Enter: new line · Alt+↑/↓ or drag ⋮⋮ to reorder'),
     ),
   );
   redraw();
-  if (cards.length === 1 && !cards[0].term) list.rowFor(cards[0].id)?.querySelector('input').focus();
+  if (cards.length === 1 && !cards[0].term) list.rowFor(cards[0].id)?.querySelector('textarea').focus();
 
   // Runs when navigating away: save everything, drop cards left completely empty.
   return async () => {

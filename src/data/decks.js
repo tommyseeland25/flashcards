@@ -16,9 +16,9 @@ export async function getDeck(id) {
   return db.get('decks', id);
 }
 
-export async function createDeck({ title = 'Untitled deck', description = '', tags = [] } = {}) {
+export async function createDeck({ title = 'Untitled deck', description = '', tags = [], termLang = '', definitionLang = '' } = {}) {
   const now = Date.now();
-  const deck = { id: newId(), title, description, tags, createdAt: now, updatedAt: now };
+  const deck = { id: newId(), title, description, tags, termLang, definitionLang, createdAt: now, updatedAt: now };
   const db = await getDb();
   await db.put('decks', deck);
   return deck;
@@ -50,6 +50,8 @@ export async function duplicateDeck(id) {
     title: `${original.title} (copy)`,
     description: original.description,
     tags: [...original.tags],
+    termLang: original.termLang ?? '',
+    definitionLang: original.definitionLang ?? '',
   });
   const cards = await listCards(id);
   const orders = initialOrders(cards.length);

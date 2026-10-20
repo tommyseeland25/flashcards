@@ -13,14 +13,22 @@ export function createFlipCard({ onFlip } = {}) {
     onclick: () => api.flip(),
   }, h('div', { class: 'flipper' }, front, back));
 
+  let text = { term: '', definition: '' };
+
   const api = {
     el,
     get flipped() { return el.classList.contains('flipped'); },
     /** Show new content, face up on the term side. */
     set(term, definition) {
+      text = { term, definition };
       front.textContent = term;
       back.textContent = definition;
       el.classList.remove('flipped');
+    },
+    /** The side currently face-up and its text, e.g. for text to speech. */
+    visible() {
+      const side = api.flipped ? 'definition' : 'term';
+      return { side, text: text[side] };
     },
     flip() {
       el.classList.toggle('flipped');

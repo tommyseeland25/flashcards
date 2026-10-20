@@ -2,6 +2,7 @@ import { h, setTitle } from '../dom.js';
 import { studyHeader, deckNotFound } from '../studyShell.js';
 import { createFlipCard } from '../flipCard.js';
 import { continuePanel } from '../quiz.js';
+import { speak, speakButton, stopSpeaking, langFor } from '../speech.js';
 import { getDeck, listDecks } from '../../data/decks.js';
 import { listCards, saveCard } from '../../data/cards.js';
 import { listAllCards } from '../../data/overview.js';
@@ -15,7 +16,7 @@ export async function reviewView([deckId], root) {
   const deck = deckId ? await getDeck(deckId) : null;
   if (deckId && !deck) return deckNotFound(root);
   if (!deck) setTitle('Review');
-  const deckTitles = new Map((await listDecks()).map((d) => [d.id, d.title]));
+  const decksById = new Map((await listDecks()).map((d) => [d.id, d]));
   let cards = deckId ? await listCards(deckId) : await listAllCards();
 
   root.append(deck
@@ -58,19 +59,21 @@ export async function reviewView([deckId], root) {
     const showBtn = h('button', { class: 'btn primary', onclick: () => flip.flip() }, 'Show answer (Space)');
     const flip = createFlipCard({ onFlip: (flipped) => { ratingBar.hidden = !flipped; showBtn.hidden = flipped; } });
     flip.set(card.term, card.definition);
+    const listen = () => { const { side, text } = flip.visible(); speak(text, langFor(decksById.get(card.deckId), side)); };
 
     const kind = isNew(card) ? 'New' : card.lapses > 0 && card.repetitions === 0 ? 'Relearning' : 'Review';
     main.replaceChildren(
       h('div', { class: 'progress' }, h('div', { class: 'progress-fill', style: `width:${(graduated / total) * 100}%` })),
-      h('div', { class: 'study-meta' }, `${queue.length} left · ${kind}`, !deckId && ` · ${deckTitles.get(card.deckId) ?? ''}`),
-      h('div', { class: 'stage' }, flip.el),
+      h('div', { class: 'study-meta' }, `${queue.length} left · ${kind}`, !deckId && ` · ${decksById.get(card.deckId)?.title ?? ''}`),
+      h('div', { class: 'stage' }, flip.el, speakButton(listen)),
       h('div', { class: 'controls' }, showBtn, ratingBar),
       h('p', { class: 'muted hint' }, 'Space: show answer, then Space = Good · 1 Again · 2 Hard · 3 Good · 4 Easy'),
     );
 
     const onKey = (e) => {
       if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input, textarea, select')) return;
-      if (e.key === ' ' || e.key === 'Enter') {
+      if (e.key === 'l' || e.key === 'L') listen();
+      else if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         flip.flipped ? rate('good') : flip.flip();
       } else if (flip.flipped && /^[1-4]$/.test(e.key)) rate(BUTTONS[Number(e.key) - 1][0]);
@@ -125,6 +128,7 @@ export async function reviewView([deckId], root) {
   startBatch();
   return async () => {
     stopKeys?.();
+    stopSpeaking();
     await flushSessions();
   };
 }

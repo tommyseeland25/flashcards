@@ -4,6 +4,7 @@ import { listCards, saveCard } from '../../data/cards.js';
 import { buildQueue } from '../../logic/studyQueue.js';
 import { studyHeader, deckNotFound } from '../studyShell.js';
 import { createFlipCard } from '../flipCard.js';
+import { speak, speakButton, stopSpeaking, langFor } from '../speech.js';
 
 export async function studyView([deckId], root) {
   const deck = await getDeck(deckId);
@@ -19,7 +20,8 @@ export async function studyView([deckId], root) {
   const progress = h('div', { class: 'progress-fill' });
   const counter = h('span', {});
   const empty = h('p', { class: 'empty', hidden: true });
-  const stage = h('div', { class: 'stage' }, card.el, star);
+  const listen = () => { const { side, text } = card.visible(); speak(text, langFor(deck, side)); };
+  const stage = h('div', { class: 'stage' }, card.el, speakButton(listen), star);
 
   function rebuild(keepCard) {
     const current = queue[index];
@@ -73,7 +75,7 @@ export async function studyView([deckId], root) {
     const handlers = {
       ' ': flip, Enter: flip, ArrowUp: flip, ArrowDown: flip,
       ArrowRight: () => go(1), ArrowLeft: () => go(-1),
-      s: toggleStar, S: toggleStar,
+      s: toggleStar, S: toggleStar, l: listen, L: listen,
     };
     const fn = handlers[e.key];
     if (!fn) return;
@@ -106,5 +108,8 @@ export async function studyView([deckId], root) {
   );
   rebuild(false);
 
-  return () => document.removeEventListener('keydown', onKey);
+  return () => {
+    document.removeEventListener('keydown', onKey);
+    stopSpeaking();
+  };
 }

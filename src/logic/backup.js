@@ -38,6 +38,8 @@ function normalizeDeck(raw, now) {
     title: str(raw.title, 'Untitled deck'),
     description: str(raw.description),
     tags: Array.isArray(raw.tags) ? raw.tags.filter((t) => typeof t === 'string') : [],
+    termLang: str(raw.termLang), // text-to-speech languages (optional, added after v1)
+    definitionLang: str(raw.definitionLang),
     createdAt: num(raw.createdAt, now),
     updatedAt: num(raw.updatedAt, now),
   };
