@@ -3,6 +3,7 @@ import { getDeck } from '../../data/decks.js';
 import { listCards, saveCard } from '../../data/cards.js';
 import { buildQueue } from '../../logic/studyQueue.js';
 import { studyHeader, deckNotFound } from '../studyShell.js';
+import { createFlipCard } from '../flipCard.js';
 
 export async function studyView([deckId], root) {
   const deck = await getDeck(deckId);
@@ -10,30 +11,27 @@ export async function studyView([deckId], root) {
   const allCards = await listCards(deckId);
   let queue = [];
   let index = 0;
-  let flipped = false;
   let shuffleCards = false;
   let starredOnly = false;
 
-  const front = h('div', { class: 'face front' });
-  const back = h('div', { class: 'face back' });
+  const card = createFlipCard();
   const star = h('button', { class: 'icon-btn star', 'aria-label': 'Star card', title: 'Star (S)', onclick: () => toggleStar() }, '★');
-  const flipper = h('div', { class: 'flipper' }, front, back);
-  const card = h('div', {
-    class: 'study-card', role: 'button', tabIndex: 0, 'aria-label': 'Flip card',
-    onclick: () => flip(),
-  }, flipper);
   const progress = h('div', { class: 'progress-fill' });
   const counter = h('span', {});
   const empty = h('p', { class: 'empty', hidden: true });
-  const stage = h('div', { class: 'stage' }, card, star);
+  const stage = h('div', { class: 'stage' }, card.el, star);
 
   function rebuild(keepCard) {
     const current = queue[index];
     queue = buildQueue(allCards, { starredOnly, shuffleCards });
     const kept = keepCard && current ? queue.indexOf(current) : -1;
     index = kept >= 0 ? kept : 0;
-    flipped = false;
     show();
+  }
+
+  function showStar(c) {
+    star.classList.toggle('on', c.starred);
+    star.setAttribute('aria-pressed', c.starred);
   }
 
   function show() {
@@ -46,31 +44,26 @@ export async function studyView([deckId], root) {
       progress.style.width = '0%';
       return;
     }
-    front.textContent = c.term;
-    back.textContent = c.definition;
-    card.classList.toggle('flipped', flipped);
-    star.classList.toggle('on', c.starred);
-    star.setAttribute('aria-pressed', c.starred);
+    card.set(c.term, c.definition);
+    showStar(c);
     counter.textContent = `${index + 1} / ${queue.length}`;
     progress.style.width = `${((index + 1) / queue.length) * 100}%`;
   }
 
   function flip() {
     if (!queue.length) return;
-    flipped = !flipped;
-    card.classList.toggle('flipped', flipped);
+    card.flip();
   }
   function go(step) {
     if (!queue.length) return;
     index = (index + step + queue.length) % queue.length;
-    flipped = false;
     show();
   }
   async function toggleStar() {
     const c = queue[index];
     if (!c) return;
     c.starred = !c.starred;
-    show();
+    showStar(c); // not show(): that would flip the card back over
     await saveCard(c);
   }
 

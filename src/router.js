@@ -18,7 +18,9 @@ export function startRouter(root, routes) {
     for (const [pattern, view] of routes) {
       const match = pattern.exec(path);
       if (!match) continue;
-      const cleanup = await view(match.slice(1).map(decodeURIComponent), root);
+      // Optional regex groups (e.g. #/review vs #/review/:id) stay undefined instead of the string "undefined".
+      const params = match.slice(1).map((part) => (part === undefined ? undefined : decodeURIComponent(part)));
+      const cleanup = await view(params, root);
       // If the user navigated again while this view was loading, discard it.
       if (id !== navigation) await cleanup?.();
       else destroy = cleanup ?? null;
