@@ -5,6 +5,7 @@ import { listCards, saveCard } from '../src/data/cards.js';
 import { exportBackup, importAsNewDecks, restoreBackup } from '../src/data/backup.js';
 import { validateBackup } from '../src/logic/backup.js';
 import { getDb } from '../src/data/db.js';
+import { recordSession } from '../src/data/stats.js';
 
 const roundTrip = async (ids) => validateBackup(JSON.stringify(await exportBackup(ids))).backup;
 const cardsOf = (c) => ({ term: c.term, definition: c.definition });
@@ -23,6 +24,18 @@ describe('backup store', () => {
     const cards = await listCards(a.id);
     expect(cards.map(cardsOf)).toEqual([{ term: '1', definition: 'one' }, { term: '2', definition: 'two' }]);
     expect(cards[1].starred).toBe(true);
+  });
+
+  it('study history travels with a backup', async () => {
+    const [deck] = await listDecks();
+    await recordSession({ deckId: deck.id, mode: 'learn', correct: 3, total: 4 });
+    const backup = await roundTrip();
+    expect(backup.sessions.some((s) => s.deckId === deck.id && s.total === 4)).toBe(true);
+
+    const db = await getDb();
+    await db.clear('sessions');
+    await restoreBackup(backup, 'replace');
+    expect((await db.getAll('sessions')).some((s) => s.deckId === deck.id && s.total === 4)).toBe(true);
   });
 
   it('importing as new decks never touches existing ones', async () => {

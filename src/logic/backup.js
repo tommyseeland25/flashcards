@@ -56,9 +56,21 @@ function normalizeStat(raw) {
   };
 }
 
+function normalizeSession(raw) {
+  return {
+    id: str(raw.id),
+    deckId: str(raw.deckId),
+    mode: str(raw.mode),
+    date: num(raw.date, 0),
+    correct: Math.max(0, num(raw.correct, 0)),
+    total: Math.max(0, num(raw.total, 0)),
+  };
+}
+
 /** Assemble a backup object from flat store contents. Cards are nested under their deck, sorted by order. */
-export function buildBackup({ decks, cards, cardStats = [] }, now = Date.now()) {
+export function buildBackup({ decks, cards, cardStats = [], sessions = [] }, now = Date.now()) {
   const ids = new Set(cards.map((c) => c.id));
+  const deckIds = new Set(decks.map((d) => d.id));
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
@@ -68,6 +80,7 @@ export function buildBackup({ decks, cards, cardStats = [] }, now = Date.now()) 
       cards: cards.filter((c) => c.deckId === d.id).sort((a, b) => a.order - b.order),
     })),
     cardStats: cardStats.filter((s) => ids.has(s.cardId)),
+    sessions: sessions.filter((s) => deckIds.has(s.deckId)), // study history, for streaks and the heatmap
   };
 }
 
@@ -92,7 +105,9 @@ export function validateBackup(jsonText, now = Date.now()) {
   if (bad) return { errors: [`Deck "${bad.title}" has a missing id, so the file looks damaged.`] };
 
   const cardStats = Array.isArray(raw.cardStats) ? raw.cardStats.filter((s) => s && typeof s === 'object').map(normalizeStat) : [];
-  return { backup: { format: BACKUP_FORMAT, version: BACKUP_VERSION, exportedAt: num(raw.exportedAt, now), decks, cardStats } };
+  // `sessions` was added after v1 shipped, so it is optional: older files simply have none.
+  const sessions = Array.isArray(raw.sessions) ? raw.sessions.filter((s) => s && typeof s === 'object').map(normalizeSession).filter((s) => s.id) : [];
+  return { backup: { format: BACKUP_FORMAT, version: BACKUP_VERSION, exportedAt: num(raw.exportedAt, now), decks, cardStats, sessions } };
 }
 
 /**
@@ -103,6 +118,7 @@ export function withFreshIds(backup, newId) {
   return {
     ...backup,
     cardStats: [],
+    sessions: [],
     decks: backup.decks.map((d) => {
       const id = newId();
       return { ...d, id, cards: d.cards.map((c) => ({ ...c, id: newId(), deckId: id })) };
