@@ -1,5 +1,5 @@
 import { getDb, newId } from './db.js';
-import { orderBetween, orderForMove } from '../logic/ordering.js';
+import { initialOrders, orderBetween, orderForMove } from '../logic/ordering.js';
 
 /** Fresh card with default spaced-repetition fields (SM-2 starting values). */
 export function makeCard(deckId, order, { term = '', definition = '' } = {}) {
@@ -68,4 +68,14 @@ export async function addCards(cardList) {
   const db = await getDb();
   const tx = db.transaction('cards', 'readwrite');
   await Promise.all([...cardList.map((c) => tx.store.put(c)), tx.done]);
+}
+
+/** Add many cards ({ term, definition, starred? }) to the end of a deck, keeping their given order. */
+export async function appendCards(deckId, newCards) {
+  const existing = await listCards(deckId);
+  const start = existing.length ? existing[existing.length - 1].order : 0;
+  const orders = initialOrders(newCards.length).map((o) => start + o);
+  await addCards(
+    newCards.map((c, i) => ({ ...makeCard(deckId, orders[i], c), starred: c.starred === true })),
+  );
 }

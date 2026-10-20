@@ -1,12 +1,11 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect } from 'vitest';
-import { createDeck, deleteDeck, duplicateDeck, listDecks } from '../src/data/decks.js';
+import { createDeck, createDeckWithCards, deleteDeck, duplicateDeck, listDecks } from '../src/data/decks.js';
 import { addCard, listCards, moveCard } from '../src/data/cards.js';
-import { createDeckWithCards } from '../src/data/seed.js';
 
 describe('deck repository', () => {
   it('duplicates a deck with its cards, then deletes cascade', async () => {
-    const deck = await createDeckWithCards('Spanish', '', [['hola', 'hello'], ['adios', 'bye']]);
+    const deck = await createDeckWithCards('Spanish', '', [{ term: 'hola', definition: 'hello' }, { term: 'adios', definition: 'bye' }]);
     const copy = await duplicateDeck(deck.id);
     expect(copy.id).not.toBe(deck.id);
     expect((await listCards(copy.id)).map((c) => c.term)).toEqual(['hola', 'adios']);

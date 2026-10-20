@@ -1,5 +1,5 @@
 import { getDb, newId } from './db.js';
-import { addCards, listCards, makeCard } from './cards.js';
+import { addCards, appendCards, listCards, makeCard } from './cards.js';
 import { initialOrders } from '../logic/ordering.js';
 
 /** Decks with a `cardCount`, for the home page. */
@@ -61,4 +61,11 @@ export async function duplicateDeck(id) {
     })),
   );
   return copy;
+}
+
+/** Create a deck and fill it with `cards` ({ term, definition, starred? }) in one go. */
+export async function createDeckWithCards(title, description, cards) {
+  const deck = await createDeck({ title, description });
+  await appendCards(deck.id, cards);
+  return deck;
 }
