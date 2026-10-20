@@ -1,0 +1,49 @@
+# Builds the app and publishes it to GitHub Pages on every push to the main branch.
+#
+# One-time setup in your GitHub repository:
+#   Settings -> Pages -> "Build and deployment" -> Source: "GitHub Actions"
+# The site then lives at https://<your-user>.github.io/<repo-name>/
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: # also lets you run it by hand from the Actions tab
+
+# The minimum permissions Pages deployment needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# If two pushes happen close together, let the running deploy finish and only keep the latest queued one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test # a failing test stops the deploy
+      - run: npm run build # relative URLs (base './'), so it works under /<repo-name>/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

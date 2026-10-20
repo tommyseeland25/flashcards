@@ -142,6 +142,10 @@ your browser offers *Install* / *Add to Home Screen*. Your cards live in Indexed
 are available offline too. `npm run dev` deliberately does NOT register the service worker (it would
 cache stale files while you edit); use `npm run build && npm run preview` to test offline behaviour.
 
+- **Deploying to GitHub Pages:** `.github/workflows/deploy.yml` tests, builds and publishes `dist/` on every
+  push to `main` (or `master`). One-time setup: push the repo to GitHub, then *Settings → Pages → Build and
+  deployment → Source: GitHub Actions*. The site appears at `https://<user>.github.io/<repo-name>/`. A failing
+  test stops the deploy. You can also run it by hand from the repo's *Actions* tab.
 - **Updates:** when you deploy a new build, installed copies download it in the background and show a
   "new version is ready, Reload" message. Pages already open keep working on the old files until then.
 - **Why a hand-written service worker** instead of `vite-plugin-pwa`: it's ~40 readable lines with no new
