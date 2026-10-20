@@ -3,11 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      // Apply the saved theme before first paint to avoid a flash (see src/ui/theme.js).
+      try {
+        const t = localStorage.getItem('flashcards-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
     <link rel="icon" href="data:," />
     <title>Flashcards</title>
     <meta name="description" content="Fast, ad-free, offline flashcards." />
   </head>
   <body>
+    <noscript>Flashcards needs JavaScript to run.</noscript>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

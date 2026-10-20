@@ -39,3 +39,8 @@ export function debounce(fn, ms) {
   };
   return debounced;
 }
+
+/** Set the browser tab / screen-reader page title. */
+export function setTitle(text) {
+  document.title = text ? `${text} · Flashcards` : 'Flashcards';
+}

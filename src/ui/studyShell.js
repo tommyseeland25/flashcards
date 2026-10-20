@@ -1,10 +1,11 @@
-import { h } from './dom.js';
+import { h, setTitle } from './dom.js';
 import { isComplete } from '../logic/studyQueue.js';
 
 const MODES = [['study', 'Flashcards'], ['review', 'Review'], ['learn', 'Learn'], ['write', 'Write'], ['test', 'Test'], ['match', 'Match']];
 
 /** Top bar shared by every study mode: back link, deck title, and the mode switcher. */
 export function studyHeader(deck, current) {
+  setTitle(`${MODES.find(([k]) => k === current)[1]}: ${deck.title}`);
   return h('header', { class: 'topbar study-top' },
     h('a', { class: 'btn', href: '#/' }, '← Decks'),
     h('h1', { class: 'grow' }, deck.title),

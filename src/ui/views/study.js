@@ -15,7 +15,7 @@ export async function studyView([deckId], root) {
   let starredOnly = false;
 
   const card = createFlipCard();
-  const star = h('button', { class: 'icon-btn star', 'aria-label': 'Star card', title: 'Star (S)', onclick: () => toggleStar() }, '★');
+  const star = h('button', { class: 'icon-btn star', 'aria-label': 'Star card', title: 'Star (S)', onclick: () => toggleStar() }, '☆');
   const progress = h('div', { class: 'progress-fill' });
   const counter = h('span', {});
   const empty = h('p', { class: 'empty', hidden: true });
@@ -31,6 +31,7 @@ export async function studyView([deckId], root) {
 
   function showStar(c) {
     star.classList.toggle('on', c.starred);
+    star.textContent = c.starred ? '★' : '☆'; // shape changes too, so state isn't colour-only
     star.setAttribute('aria-pressed', c.starred);
   }
 

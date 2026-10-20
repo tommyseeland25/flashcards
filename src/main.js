@@ -1,6 +1,7 @@
 import './styles/base.css';
 import './styles/components.css';
 import { startRouter } from './router.js';
+import { initShortcuts } from './ui/shortcuts.js';
 import { seedIfFirstRun } from './data/seed.js';
 import { homeView } from './ui/views/home.js';
 import { deckEditorView } from './ui/views/deckEditor.js';
@@ -28,5 +29,8 @@ const routes = [
   [/^\/data$/, dataView],
 ];
 
+initShortcuts();
+// Ask the browser not to evict our data under storage pressure (it may ignore this, and that's fine).
+navigator.storage?.persist?.();
 await seedIfFirstRun();
 startRouter(document.getElementById('app'), routes);

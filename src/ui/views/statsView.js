@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, setTitle } from '../dom.js';
 import { createHeatmap } from '../heatmap.js';
 import { loadStatsData } from '../../data/overview.js';
 import { activityByDay, dayKey, deckSummaries, studyStreak } from '../../logic/analytics.js';
@@ -8,6 +8,7 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 const tile = (value, caption) => h('div', { class: 'tile-stat' }, h('div', { class: 'big' }, value), h('div', { class: 'muted' }, caption));
 
 export async function statsView(_params, root) {
+  setTitle('Stats');
   const { decks, cards, cardStats, sessions } = await loadStatsData();
   const now = Date.now();
   const activity = activityByDay(sessions);

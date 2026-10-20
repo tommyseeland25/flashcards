@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, setTitle } from '../dom.js';
 import { toast } from '../toast.js';
 import { downloadText } from '../download.js';
 import { exportBackup, restoreBackup } from '../../data/backup.js';
@@ -8,6 +8,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /** Full backup and restore for everything in the app. */
 export async function dataView(_params, root) {
+  setTitle('Backup & restore');
   let mode = 'merge';
   let backup = null;
   const status = h('div', { class: 'preview' });

@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, setTitle } from '../dom.js';
 import { studyHeader, deckNotFound } from '../studyShell.js';
 import { createFlipCard } from '../flipCard.js';
 import { continuePanel } from '../quiz.js';
@@ -14,6 +14,7 @@ const BUTTONS = [['again', 'Again', 1], ['hard', 'Hard', 2], ['good', 'Good', 3]
 export async function reviewView([deckId], root) {
   const deck = deckId ? await getDeck(deckId) : null;
   if (deckId && !deck) return deckNotFound(root);
+  if (!deck) setTitle('Review');
   const deckTitles = new Map((await listDecks()).map((d) => [d.id, d.title]));
   let cards = deckId ? await listCards(deckId) : await listAllCards();
 

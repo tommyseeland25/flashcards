@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, setTitle } from '../dom.js';
 import { toast } from '../toast.js';
 import { parseText, resolveSeparator, detectTermSeparator } from '../../logic/importParser.js';
 import { csvToCards } from '../../logic/csv.js';
@@ -13,6 +13,7 @@ const FORMATS = { text: 'Pasted text', csv: 'CSV', json: 'JSON (Flashcards backu
 
 /** #/import creates new decks; #/import/:deckId adds the cards to an existing deck. */
 export async function importView([targetId], root) {
+  setTitle('Import');
   const target = targetId ? await getDeck(targetId) : null;
   const s = { format: 'text', text: '', termSep: '\t', termCustom: '', cardSep: '\n', cardCustom: '', title: '', touchedSep: false };
 

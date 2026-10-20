@@ -1,6 +1,8 @@
-import { h } from '../dom.js';
+import { h, setTitle } from '../dom.js';
 import { listDecks, createDeck, deleteDeck, duplicateDeck } from '../../data/decks.js';
 import { createLargeTestDeck } from '../../data/seed.js';
+import { cycleTheme, getTheme, THEME_LABELS } from '../theme.js';
+import { showShortcuts } from '../shortcuts.js';
 import { loadDueCounts } from '../../data/overview.js';
 
 const SORTS = {
@@ -14,11 +16,19 @@ const matchesQuery = (deck, q) =>
   [deck.title, deck.description, ...deck.tags].join(' ').toLowerCase().includes(q);
 
 export async function homeView(_params, root) {
+  setTitle('Decks');
   let decks = await listDecks();
   let counts = await loadDueCounts();
   let query = '';
   let sort = 'updated';
 
+  const themeBtn = h('button', { class: 'btn', onclick: () => { cycleTheme(); drawTheme(); } });
+  const drawTheme = () => {
+    const label = THEME_LABELS[getTheme()];
+    themeBtn.textContent = `◐ ${label}`;
+    themeBtn.setAttribute('aria-label', `Theme: ${label}. Activate to change.`);
+  };
+  drawTheme();
   const list = h('ul', { class: 'deck-list' });
   const banner = h('div', { class: 'banner', hidden: true });
 
@@ -90,6 +100,8 @@ export async function homeView(_params, root) {
       h('h1', { class: 'grow' }, 'Flashcards'),
       h('a', { class: 'btn', href: '#/import' }, 'Import'),
       h('a', { class: 'btn', href: '#/stats' }, 'Stats'),
+      themeBtn,
+      h('button', { class: 'btn', 'aria-label': 'Keyboard shortcuts', title: 'Keyboard shortcuts (?)', onclick: showShortcuts }, '?'),
       h('a', { class: 'btn', href: '#/data' }, 'Backup'),
       h('button', {
         class: 'btn primary',

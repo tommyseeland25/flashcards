@@ -1,4 +1,4 @@
-import { h, debounce } from '../dom.js';
+import { h, debounce, setTitle } from '../dom.js';
 import { createVirtualList } from '../virtualList.js';
 import { toast } from '../toast.js';
 import { downloadText, slug } from '../download.js';
@@ -15,6 +15,7 @@ export async function deckEditorView([deckId], root) {
     root.append(h('p', { class: 'page' }, 'Deck not found. ', h('a', { href: '#/' }, 'Back to decks')));
     return;
   }
+  setTitle(`Edit: ${deck.title}`);
   let cards = await listCards(deckId);
   if (cards.length === 0) cards = [await addCard(deckId, [])];
 
@@ -50,10 +51,11 @@ export async function deckEditorView([deckId], root) {
       onclick: () => {
         card.starred = !card.starred;
         star.classList.toggle('on', card.starred);
+        star.textContent = card.starred ? '★' : '☆';
         star.setAttribute('aria-pressed', card.starred);
         edited(card);
       },
-    }, '★');
+    }, card.starred ? '★' : '☆');
 
     return h('div', { class: 'card-row' },
       h('span', { class: 'handle', title: 'Drag to reorder', onpointerdown: (e) => startDrag(e, card) }, '⋮⋮'),
