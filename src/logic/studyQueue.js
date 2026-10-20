@@ -14,3 +14,6 @@ export function buildQueue(cards, { starredOnly = false, shuffleCards = false, r
   if (starredOnly) queue = queue.filter((c) => c.starred);
   return shuffleCards ? shuffle(queue, random) : queue;
 }
+
+/** Quiz modes need both sides filled in (a question needs a prompt AND an answer). */
+export const isComplete = (card) => card.term.trim() !== '' && card.definition.trim() !== '';
