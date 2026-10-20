@@ -1,5 +1,6 @@
 import { getDb, newId } from './db.js';
 import { buildBackup, decksToRestore, withFreshIds } from '../logic/backup.js';
+import { exportImages, toImageRecords } from './images.js';
 
 /** Everything (or just the given decks) as a backup object, ready for JSON.stringify. */
 export async function exportBackup(deckIds) {
@@ -10,25 +11,27 @@ export async function exportBackup(deckIds) {
   const cards = (await db.getAll('cards')).filter((c) => keep.has(c.deckId));
   const cardStats = await db.getAll('cardStats');
   const sessions = await db.getAll('sessions');
-  return buildBackup({ decks, cards, cardStats, sessions });
+  const images = await exportImages(cards.map((c) => c.imageId).filter(Boolean));
+  return buildBackup({ decks, cards, cardStats, sessions, images });
 }
 
 /** Write decks (with nested cards) and stats in one transaction: all or nothing. */
-async function writeDecks(tx, decks, cardStats, sessions = []) {
+async function writeDecks(tx, decks, cardStats, sessions = [], images = []) {
   for (const { cards, ...deck } of decks) {
     tx.objectStore('decks').put(deck);
     for (const card of cards) tx.objectStore('cards').put(card);
   }
   for (const stat of cardStats) tx.objectStore('cardStats').put(stat);
   for (const session of sessions) tx.objectStore('sessions').put(session);
+  for (const image of toImageRecords(images)) tx.objectStore('images').put(image);
 }
 
 /** Import a validated backup as brand-new decks (fresh ids, so nothing existing is touched). */
 export async function importAsNewDecks(backup) {
   const fresh = withFreshIds(backup, newId);
   const db = await getDb();
-  const tx = db.transaction(['decks', 'cards', 'cardStats'], 'readwrite');
-  await writeDecks(tx, fresh.decks, fresh.cardStats, []);
+  const tx = db.transaction(['decks', 'cards', 'cardStats', 'sessions', 'images'], 'readwrite');
+  await writeDecks(tx, fresh.decks, fresh.cardStats, [], fresh.images);
   await tx.done;
   return fresh.decks;
 }
@@ -42,11 +45,11 @@ export async function importAsNewDecks(backup) {
  */
 export async function restoreBackup(backup, mode) {
   const db = await getDb();
-  const tx = db.transaction(['decks', 'cards', 'cardStats', 'sessions'], 'readwrite');
+  const tx = db.transaction(['decks', 'cards', 'cardStats', 'sessions', 'images'], 'readwrite');
   let decks = backup.decks;
 
   if (mode === 'replace') {
-    await Promise.all(['decks', 'cards', 'cardStats', 'sessions'].map((name) => tx.objectStore(name).clear()));
+    await Promise.all(['decks', 'cards', 'cardStats', 'sessions', 'images'].map((name) => tx.objectStore(name).clear()));
   } else {
     const existing = new Map((await tx.objectStore('decks').getAll()).map((d) => [d.id, d.updatedAt]));
     decks = decksToRestore(existing, backup.decks);
@@ -63,6 +66,7 @@ export async function restoreBackup(backup, mode) {
     decks,
     backup.cardStats.filter((s) => written.has(s.cardId)),
     backup.sessions.filter((s) => deckIds.has(s.deckId)),
+    backup.images,
   );
   await tx.done;
   return decks.length;

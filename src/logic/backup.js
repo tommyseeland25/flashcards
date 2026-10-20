@@ -69,10 +69,18 @@ function normalizeSession(raw) {
   };
 }
 
+// Only raster formats we produce ourselves; anything else in a file (e.g. SVG) is dropped.
+const IMAGE_TYPES = new Set(['image/webp', 'image/jpeg', 'image/png', 'image/gif']);
+
+function normalizeImage(raw) {
+  return { id: str(raw.id), type: str(raw.type), data: str(raw.data) };
+}
+
 /** Assemble a backup object from flat store contents. Cards are nested under their deck, sorted by order. */
-export function buildBackup({ decks, cards, cardStats = [], sessions = [] }, now = Date.now()) {
+export function buildBackup({ decks, cards, cardStats = [], sessions = [], images = [] }, now = Date.now()) {
   const ids = new Set(cards.map((c) => c.id));
   const deckIds = new Set(decks.map((d) => d.id));
+  const usedImages = new Set(cards.map((c) => c.imageId).filter(Boolean));
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
@@ -83,6 +91,7 @@ export function buildBackup({ decks, cards, cardStats = [], sessions = [] }, now
     })),
     cardStats: cardStats.filter((s) => ids.has(s.cardId)),
     sessions: sessions.filter((s) => deckIds.has(s.deckId)), // study history, for streaks and the heatmap
+    images: images.filter((i) => usedImages.has(i.id)), // base64 card images
   };
 }
 
@@ -109,7 +118,10 @@ export function validateBackup(jsonText, now = Date.now()) {
   const cardStats = Array.isArray(raw.cardStats) ? raw.cardStats.filter((s) => s && typeof s === 'object').map(normalizeStat) : [];
   // `sessions` was added after v1 shipped, so it is optional: older files simply have none.
   const sessions = Array.isArray(raw.sessions) ? raw.sessions.filter((s) => s && typeof s === 'object').map(normalizeSession).filter((s) => s.id) : [];
-  return { backup: { format: BACKUP_FORMAT, version: BACKUP_VERSION, exportedAt: num(raw.exportedAt, now), decks, cardStats, sessions } };
+  const images = Array.isArray(raw.images)
+    ? raw.images.filter((i) => i && typeof i === 'object').map(normalizeImage).filter((i) => i.id && i.data && IMAGE_TYPES.has(i.type))
+    : [];
+  return { backup: { format: BACKUP_FORMAT, version: BACKUP_VERSION, exportedAt: num(raw.exportedAt, now), decks, cardStats, sessions, images } };
 }
 
 /**

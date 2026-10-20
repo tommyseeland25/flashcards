@@ -6,6 +6,8 @@ import { exportBackup, importAsNewDecks, restoreBackup } from '../src/data/backu
 import { validateBackup } from '../src/logic/backup.js';
 import { getDb } from '../src/data/db.js';
 import { recordSession } from '../src/data/stats.js';
+import { saveImage, purgeOrphanImages } from '../src/data/images.js';
+import { loadImageUrls } from '../src/data/images.js';
 
 const roundTrip = async (ids) => validateBackup(JSON.stringify(await exportBackup(ids))).backup;
 const cardsOf = (c) => ({ term: c.term, definition: c.definition });
@@ -36,6 +38,31 @@ describe('backup store', () => {
     await db.clear('sessions');
     await restoreBackup(backup, 'replace');
     expect((await db.getAll('sessions')).some((s) => s.deckId === deck.id && s.total === 4)).toBe(true);
+  });
+
+  it('images survive backup, restore and orphan purge', async () => {
+    globalThis.URL.createObjectURL ??= () => 'blob:test';
+    const deck = (await listDecks()).find((d) => d.title === 'A');
+    const [card] = await listCards(deck.id);
+    const bytes = new Uint8Array([137, 80, 78, 71, 1, 2, 3, 250, 251, 252]);
+    const imageId = await saveImage(new Blob([bytes], { type: 'image/png' }));
+    await saveCard({ ...card, imageId });
+    const orphanId = await saveImage(new Blob([bytes], { type: 'image/png' })); // no card uses this one
+
+    const backup = await roundTrip();
+    expect(backup.images.map((i) => i.id)).toEqual([imageId]);
+
+    await restoreBackup(backup, 'replace'); // wipes the images store first
+    const db = await getDb();
+    const stored = await db.get('images', imageId);
+    expect(new Uint8Array(await stored.blob.arrayBuffer())).toEqual(bytes);
+    expect(stored.type).toBe('image/png');
+    expect(await db.get('images', orphanId)).toBeUndefined();
+
+    await saveImage(new Blob([bytes], { type: 'image/png' }));
+    await purgeOrphanImages();
+    expect(await db.getAllKeys('images')).toEqual([imageId]);
+    await loadImageUrls([{ imageId }]);
   });
 
   it('importing as new decks never touches existing ones', async () => {

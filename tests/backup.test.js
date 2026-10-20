@@ -22,6 +22,14 @@ describe('backup', () => {
     const { backup: restored } = validateBackup(JSON.stringify({ ...backup, decks: [{ ...old, cards: [] }] }));
     expect(restored.decks[0]).toMatchObject({ termLang: '', definitionLang: '' });
   });
+  it('keeps only images that cards use, and only safe raster types', () => {
+    const withImg = { ...backup, decks: [{ ...backup.decks[0], cards: [{ ...backup.decks[0].cards[0], imageId: 'img1' }] }] };
+    const built = buildBackup({ decks: [deck], cards: withImg.decks[0].cards, images: [
+      { id: 'img1', type: 'image/webp', data: 'AAAA' }, { id: 'unused', type: 'image/webp', data: 'AAAA' }] });
+    expect(built.images.map((i) => i.id)).toEqual(['img1']);
+    const raw = { ...built, images: [...built.images, { id: 'svg', type: 'image/svg+xml', data: 'PHN2Zz4=' }, { id: '', type: 'image/png', data: 'AA' }] };
+    expect(validateBackup(JSON.stringify(raw)).backup.images.map((i) => i.id)).toEqual(['img1']);
+  });
   it('rejects non-JSON, foreign JSON, and newer versions', () => {
     expect(validateBackup('nope').errors[0]).toMatch(/not valid JSON/);
     expect(validateBackup('{"decks":[]}').errors[0]).toMatch(/not a Flashcards backup/);
