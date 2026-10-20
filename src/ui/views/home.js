@@ -64,7 +64,9 @@ export async function homeView(_params, root) {
 
   root.append(
     h('header', { class: 'topbar' },
-      h('h1', {}, 'Flashcards'),
+      h('h1', { class: 'grow' }, 'Flashcards'),
+      h('a', { class: 'btn', href: '#/import' }, 'Import'),
+      h('a', { class: 'btn', href: '#/data' }, 'Backup'),
       h('button', {
         class: 'btn primary',
         onclick: async () => { location.hash = `#/deck/${(await createDeck()).id}`; },

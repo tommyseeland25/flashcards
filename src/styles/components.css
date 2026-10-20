@@ -83,3 +83,16 @@ input, select {
 #toasts { position: fixed; bottom: 16px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; }
 .toast { pointer-events: auto; background: var(--text); color: var(--bg); padding: 10px 14px; border-radius: var(--radius); display: flex; gap: 8px; align-items: center; }
 .toast .btn-link { color: var(--bg); }
+
+/* ---------- import / backup ---------- */
+textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; width: 100%; resize: vertical; }
+.delimiters { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+.delimiters label { display: inline-flex; align-items: center; gap: 6px; }
+.preview { display: grid; gap: 8px; }
+.preview-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); }
+.preview-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: pre-wrap; overflow-wrap: anywhere; }
+.error { color: var(--danger); }
+.warn { color: var(--star); cursor: pointer; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; justify-items: start; }
+.export-bar { align-items: center; }
+.export-bar .grow { flex: 1; }

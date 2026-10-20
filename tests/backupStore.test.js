@@ -34,7 +34,7 @@ describe('backup store', () => {
   });
 
   it('merge keeps newer local decks and refreshes older ones', async () => {
-    const [deck] = await listDecks();
+    const deck = (await listDecks()).find((d) => d.title === 'A'); // has 2 cards
     const backup = await roundTrip([deck.id]);
 
     // Local copy is newer than the backup: merge must keep it.
@@ -50,6 +50,6 @@ describe('backup store', () => {
     await saveCard({ ...cards[1], term: 'changed' });
     expect(await restoreBackup(backup, 'merge')).toBe(1);
     expect((await db.get('decks', deck.id)).title).toBe(deck.title);
-    expect((await listCards(deck.id)).map((c) => c.term)).toEqual(cards.map((c) => c.term).map((t, i) => (i === 1 ? cards[1].term : t)));
+    expect((await listCards(deck.id)).map((c) => c.term)).toEqual(['1', '2']);
   });
 });

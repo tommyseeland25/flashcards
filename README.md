@@ -2,7 +2,7 @@
 
 A fast, ad-free, offline-first flashcard app. No accounts, no tracking, no backend: all data lives in your browser's IndexedDB.
 
-**Status:** Phase 1 (core) done. See the roadmap below.
+**Status:** Phases 1 (core) and 2 (import/export) done. See the roadmap below.
 
 ## Run it
 
@@ -37,20 +37,37 @@ src/
     ordering.js      card ordering by midpoint (one write per move/insert)
     studyQueue.js    which cards a study session shows (starred filter, shuffle)
     shuffle.js       Fisher-Yates
+    importParser.js  pasted text -> cards (configurable separators, Quizlet format), skipped-line reports
+    csv.js           CSV parse/serialize, deck <-> CSV, deck -> Quizlet-style text
+    backup.js        backup file format, validation/sanitizing, fresh ids, merge rule
   data/            the ONLY code that touches IndexedDB
     db.js            schema + versioned migrations
     decks.js cards.js   repository functions (CRUD, duplicate, reorder)
+    backup.js        export everything, import as new decks, restore (replace / merge)
     seed.js          sample deck + large test deck
   ui/
     dom.js           h() element helper, debounce
     virtualList.js   windowed list for fixed-height rows (keeps 1,000+ card decks fast)
-    toast.js
-    views/           home.js (deck list), deckEditor.js, study.js
+    toast.js download.js
+    views/           home.js (deck list), deckEditor.js, study.js,
+                     importView.js (#/import[/:deckId]), dataView.js (#/data: backup & restore)
   styles/          base.css (theme variables), components.css
 tests/             Vitest tests for logic/ and the data layer (fake-indexeddb)
 ```
 
 Layering: `ui → data` and `ui → logic`. `logic` never imports from `ui` or `data`.
+
+## Importing and exporting
+
+- **From Quizlet:** open your set, choose *Export*, copy the text, then in the app click *Import* and
+  paste it. The defaults (Tab between term and definition, new line between cards) match Quizlet's
+  export. Lines that can't be parsed are listed, not silently dropped.
+- **Formats:** pasted text (any separators), CSV (`term,definition[,starred]`, header optional), and
+  JSON. Each deck's editor page can export Text, CSV or JSON, and *Import cards…* adds to that deck.
+- **Backup (`#/data`):** one JSON file with all decks, cards and progress. *Merge* keeps whichever
+  copy of a deck was edited most recently; *Replace* wipes first. Backup files are validated and
+  sanitized before they touch the database.
+- Text export turns tabs and newlines inside a card into spaces, because the format can't represent them.
 
 ## Design notes
 

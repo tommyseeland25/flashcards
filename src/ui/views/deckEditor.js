@@ -1,6 +1,9 @@
 import { h, debounce } from '../dom.js';
 import { createVirtualList } from '../virtualList.js';
 import { toast } from '../toast.js';
+import { downloadText, slug } from '../download.js';
+import { cardsToCsv, cardsToText } from '../../logic/csv.js';
+import { buildBackup } from '../../logic/backup.js';
 import { getDeck, updateDeck } from '../../data/decks.js';
 import { listCards, addCard, newCardAfter, saveCard, deleteCard, moveCard } from '../../data/cards.js';
 
@@ -156,6 +159,10 @@ export async function deckEditorView([deckId], root) {
       },
     });
 
+  const filled = () => cards.filter((c) => c.term.trim() || c.definition.trim());
+  const exportButton = (label, ext, mime, makeText) =>
+    h('button', { class: 'btn', onclick: () => downloadText(`${slug(deck.title)}.${ext}`, makeText(), mime) }, label);
+
   root.append(
     h('header', { class: 'topbar' },
       h('a', { class: 'btn', href: '#/' }, '← Decks'),
@@ -169,6 +176,15 @@ export async function deckEditorView([deckId], root) {
       textField('Tags', 'tags', 'Tags, comma separated'),
       list.el,
       h('button', { class: 'btn', onclick: () => insertAfter(cards[cards.length - 1]) }, '+ Add card'),
+      h('div', { class: 'toolbar export-bar' },
+        h('a', { class: 'btn', href: `#/import/${deckId}` }, 'Import cards…'),
+        h('span', { class: 'grow' }),
+        h('span', { class: 'muted' }, 'Export:'),
+        exportButton('Text', 'txt', 'text/plain', () => cardsToText(filled())),
+        exportButton('CSV', 'csv', 'text/csv', () => cardsToCsv(filled())),
+        exportButton('JSON', 'json', 'application/json', () =>
+          JSON.stringify(buildBackup({ decks: [deck], cards: filled() }), null, 2)),
+      ),
       h('p', { class: 'muted hint' }, 'Tab: term → definition · Enter: new card below · Drag ⋮⋮ to reorder'),
     ),
   );
