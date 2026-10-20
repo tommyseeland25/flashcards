@@ -19,9 +19,10 @@ export function createFlipCard({ onFlip } = {}) {
     el,
     get flipped() { return el.classList.contains('flipped'); },
     /** Show new content, face up on the term side. */
-    set(term, definition) {
+    set(term, definition, imageSrc = null) {
       text = { term, definition };
-      front.textContent = term;
+      // The image belongs to the term side; the text goes in a span so it can sit under the picture.
+      front.replaceChildren(...(imageSrc ? [h('img', { class: 'card-img', src: imageSrc, alt: 'Picture on this card' })] : []), h('span', {}, term));
       back.textContent = definition;
       el.classList.remove('flipped');
     },

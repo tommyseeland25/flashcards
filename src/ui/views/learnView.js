@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { studyHeader, deckNotFound, usableCards } from '../studyShell.js';
-import { askChoice, askWritten, continuePanel } from '../quiz.js';
+import { askChoice, askWritten, continuePanel, promptBlock } from '../quiz.js';
+import { loadImageUrls } from '../../data/images.js';
 import { getDeck } from '../../data/decks.js';
 import { listCards } from '../../data/cards.js';
 import { recordAnswer, recordSession } from '../../data/stats.js';
@@ -13,6 +14,7 @@ export async function learnView([deckId], root) {
   root.append(studyHeader(deck, 'learn'));
   const usable = usableCards(cards, deck, root);
   if (!usable) return;
+  await loadImageUrls(usable);
 
   let session;
   let current = null; // the active question widget, so it can be disposed
@@ -48,7 +50,7 @@ export async function learnView([deckId], root) {
     show({
       el: h('div', {},
         h('p', { class: 'muted' }, q.mode === 'choice' ? 'Choose the matching definition' : 'Type the definition'),
-        h('div', { class: 'quiz-prompt' }, q.prompt),
+        promptBlock(q.prompt, q.imageId),
         widget.el),
       dispose: widget.dispose,
     });

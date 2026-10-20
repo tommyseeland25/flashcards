@@ -30,7 +30,7 @@ function wrongDefinition(card, allCards, random) {
 }
 
 function buildQuestion(card, type, allCards, random) {
-  const base = { cardId: card.id, prompt: card.term, definition: card.definition };
+  const base = { cardId: card.id, prompt: card.term, imageId: card.imageId ?? null, definition: card.definition };
   if (type === 'choice') {
     const options = makeChoiceOptions(card, allCards, random);
     if (options.length >= 2) return { ...base, type, answer: card.definition, options };

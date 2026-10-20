@@ -1,5 +1,7 @@
 import { h } from '../dom.js';
 import { studyHeader, deckNotFound, usableCards } from '../studyShell.js';
+import { promptBlock } from '../quiz.js';
+import { loadImageUrls } from '../../data/images.js';
 import { getDeck } from '../../data/decks.js';
 import { listCards } from '../../data/cards.js';
 import { recordAnswer, recordSession } from '../../data/stats.js';
@@ -14,6 +16,7 @@ export async function testView([deckId], root) {
   root.append(studyHeader(deck, 'test'));
   const usable = usableCards(cards, deck, root);
   if (!usable) return;
+  await loadImageUrls(usable);
 
   const main = h('main', { class: 'page' });
   root.append(main);
@@ -67,7 +70,7 @@ export async function testView([deckId], root) {
 
     return h('fieldset', { class: 'question' },
       h('legend', {}, `${i + 1}. `, q.type === 'truefalse' ? 'True or false: this term and definition go together' : q.type === 'choice' ? 'Choose the definition' : 'Write the definition'),
-      h('div', { class: 'quiz-prompt small' }, q.prompt),
+      promptBlock(q.prompt, q.imageId, 'quiz-prompt small'),
       q.type === 'truefalse' && h('div', { class: 'statement' }, q.shown),
       body,
     );
@@ -115,7 +118,7 @@ export async function testView([deckId], root) {
     const shown = response === undefined ? '(no answer)' : q.type === 'truefalse' ? (response ? 'True' : 'False') : response;
     const expected = q.type === 'truefalse' ? `${q.answer ? 'True' : 'False'} — the definition is “${q.definition}”` : q.answer;
     return h('div', { class: `review ${overridden ? 'overridden' : ''}` },
-      h('div', { class: 'quiz-prompt small' }, `${i + 1}. ${q.prompt}`),
+      promptBlock(`${i + 1}. ${q.prompt}`, q.imageId, 'quiz-prompt small'),
       q.type === 'truefalse' && h('div', { class: 'statement' }, q.shown),
       h('p', {}, h('span', { class: 'muted' }, 'Your answer: '), shown),
       h('p', {}, h('span', { class: 'muted' }, 'Correct answer: '), expected),

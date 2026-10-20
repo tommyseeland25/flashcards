@@ -4,12 +4,14 @@ import { listCards, saveCard } from '../../data/cards.js';
 import { buildQueue } from '../../logic/studyQueue.js';
 import { studyHeader, deckNotFound } from '../studyShell.js';
 import { createFlipCard } from '../flipCard.js';
+import { loadImageUrls, imageUrl } from '../../data/images.js';
 import { speak, speakButton, stopSpeaking, langFor } from '../speech.js';
 
 export async function studyView([deckId], root) {
   const deck = await getDeck(deckId);
   if (!deck) return deckNotFound(root);
   const allCards = await listCards(deckId);
+  await loadImageUrls(allCards);
   let queue = [];
   let index = 0;
   let shuffleCards = false;
@@ -47,7 +49,7 @@ export async function studyView([deckId], root) {
       progress.style.width = '0%';
       return;
     }
-    card.set(c.term, c.definition);
+    card.set(c.term, c.definition, imageUrl(c.imageId));
     showStar(c);
     counter.textContent = `${index + 1} / ${queue.length}`;
     progress.style.width = `${((index + 1) / queue.length) * 100}%`;

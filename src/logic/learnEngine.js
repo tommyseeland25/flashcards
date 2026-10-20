@@ -53,6 +53,7 @@ export class LearnSession {
         cardId: card.id,
         mode,
         prompt: card.term,
+        imageId: card.imageId ?? null,
         answer: card.definition,
         options: mode === 'choice' ? makeChoiceOptions(card, this.cards, this.random) : null,
       };

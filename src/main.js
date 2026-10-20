@@ -2,6 +2,7 @@ import './styles/base.css';
 import './styles/components.css';
 import { startRouter } from './router.js';
 import { initShortcuts } from './ui/shortcuts.js';
+import { purgeOrphanImages } from './data/images.js';
 import { seedIfFirstRun } from './data/seed.js';
 import { homeView } from './ui/views/home.js';
 import { deckEditorView } from './ui/views/deckEditor.js';
@@ -34,3 +35,6 @@ initShortcuts();
 navigator.storage?.persist?.();
 await seedIfFirstRun();
 startRouter(document.getElementById('app'), routes);
+
+// Housekeeping once things have settled: drop stored pictures no card uses any more.
+setTimeout(() => purgeOrphanImages().catch(console.error), 3000);

@@ -1,5 +1,6 @@
 import { h } from './dom.js';
 import { grade } from '../logic/matching.js';
+import { imageUrl } from '../data/images.js';
 
 /*
  * Reusable question widgets for Learn and Write. Each returns { el, dispose }:
@@ -128,4 +129,12 @@ export function continuePanel({ title, body, label = 'Continue', secondary, onCo
   const el = h('div', { class: 'panel summary' }, h('h2', {}, title), body, h('div', { class: 'toolbar' }, button, secondary));
   queueMicrotask(() => button.focus());
   return { el, dispose: () => {} }; // the focused button already handles Enter natively
+}
+
+/** The big question text for Learn / Write / Test, with the card's picture above it if it has one. */
+export function promptBlock(text, imageId, className = 'quiz-prompt') {
+  const src = imageUrl(imageId);
+  return h('div', { class: className },
+    src && h('img', { class: 'card-img', src, alt: 'Picture on this card' }),
+    h('span', {}, text));
 }

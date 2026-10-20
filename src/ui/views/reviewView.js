@@ -2,6 +2,7 @@ import { h, setTitle } from '../dom.js';
 import { studyHeader, deckNotFound } from '../studyShell.js';
 import { createFlipCard } from '../flipCard.js';
 import { continuePanel } from '../quiz.js';
+import { loadImageUrls, imageUrl } from '../../data/images.js';
 import { speak, speakButton, stopSpeaking, langFor } from '../speech.js';
 import { getDeck, listDecks } from '../../data/decks.js';
 import { listCards, saveCard } from '../../data/cards.js';
@@ -34,8 +35,9 @@ export async function reviewView([deckId], root) {
   const main = h('main', { class: 'page study' });
   root.append(main);
 
-  function startBatch() {
+  async function startBatch() {
     queue = reviewQueue(cards, Date.now());
+    await loadImageUrls(queue);
     total = queue.length;
     graduated = 0;
     next();
@@ -58,7 +60,7 @@ export async function reviewView([deckId], root) {
           h('kbd', {}, key), ` ${label}`, h('small', {}, previews[rating]))));
     const showBtn = h('button', { class: 'btn primary', onclick: () => flip.flip() }, 'Show answer (Space)');
     const flip = createFlipCard({ onFlip: (flipped) => { ratingBar.hidden = !flipped; showBtn.hidden = flipped; } });
-    flip.set(card.term, card.definition);
+    flip.set(card.term, card.definition, imageUrl(card.imageId));
     const listen = () => { const { side, text } = flip.visible(); speak(text, langFor(decksById.get(card.deckId), side)); };
 
     const kind = isNew(card) ? 'New' : card.lapses > 0 && card.repetitions === 0 ? 'Relearning' : 'Review';

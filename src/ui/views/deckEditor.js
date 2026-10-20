@@ -3,7 +3,9 @@ import { createVirtualList } from '../virtualList.js';
 import { toast } from '../toast.js';
 import { downloadText, slug } from '../download.js';
 import { cardsToCsv, cardsToText } from '../../logic/csv.js';
-import { buildBackup } from '../../logic/backup.js';
+import { exportBackup } from '../../data/backup.js';
+import { saveImage, loadImageUrls, imageUrl } from '../../data/images.js';
+import { shrinkImage } from '../imageTools.js';
 import { getDeck, updateDeck } from '../../data/decks.js';
 import { listCards, addCard, newCardAfter, saveCard, deleteCard, moveCard } from '../../data/cards.js';
 
@@ -18,6 +20,7 @@ export async function deckEditorView([deckId], root) {
   setTitle(`Edit: ${deck.title}`);
   let cards = await listCards(deckId);
   if (cards.length === 0) cards = [await addCard(deckId, [])];
+  await loadImageUrls(cards);
 
   // ---- saving: edits are written ~400ms after typing stops, and flushed on leave ----
   const pending = new Map(); // card.id -> card
@@ -67,11 +70,40 @@ export async function deckEditorView([deckId], root) {
       },
     }, card.starred ? '★' : '☆');
 
+    // Picture button: empty -> opens the file picker; with a picture -> shows a thumbnail, click removes it.
+    const picker = h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: (e) => attach(e.target.files[0]) });
+    const imageBtn = h('button', { class: 'icon-btn image-btn', onclick: () => (card.imageId ? detach() : picker.click()) });
+    const drawImageBtn = () => {
+      const src = imageUrl(card.imageId);
+      imageBtn.replaceChildren(src ? h('img', { class: 'thumb', src, alt: '' }) : '🖼');
+      imageBtn.setAttribute('aria-label', src ? 'Remove picture from this card' : 'Add a picture to this card');
+      imageBtn.title = src ? 'Remove picture' : 'Add picture';
+    };
+    async function attach(file) {
+      if (!file) return;
+      try {
+        card.imageId = await saveImage(await shrinkImage(file));
+        edited(card);
+        drawImageBtn();
+      } catch (err) {
+        toast(err.message);
+      }
+      picker.value = '';
+    }
+    function detach() {
+      if (!confirm('Remove the picture from this card?')) return;
+      card.imageId = null;
+      edited(card);
+      drawImageBtn();
+    }
+    drawImageBtn();
+
     return h('div', { class: 'card-row' },
       h('span', { class: 'handle', title: 'Drag to reorder (or Alt+↑/↓ in a field)', 'aria-hidden': 'true', onpointerdown: (e) => startDrag(e, card) }, '⋮⋮'),
       h('span', { class: 'row-num' }, ''),
       field('term', 'Term'),
       field('definition', 'Definition'),
+      imageBtn, picker,
       star,
       h('button', { class: 'icon-btn', title: 'Delete card', 'aria-label': 'Delete card', onclick: () => remove(card) }, '✕'),
     );
@@ -189,7 +221,7 @@ export async function deckEditorView([deckId], root) {
 
   const filled = () => cards.filter((c) => c.term.trim() || c.definition.trim());
   const exportButton = (label, ext, mime, makeText) =>
-    h('button', { class: 'btn', onclick: () => downloadText(`${slug(deck.title)}.${ext}`, makeText(), mime) }, label);
+    h('button', { class: 'btn', onclick: async () => downloadText(`${slug(deck.title)}.${ext}`, await makeText(), mime) }, label);
 
   root.append(
     h('header', { class: 'topbar' },
@@ -217,8 +249,10 @@ export async function deckEditorView([deckId], root) {
         h('span', { class: 'muted' }, 'Export:'),
         exportButton('Text', 'txt', 'text/plain', () => cardsToText(filled())),
         exportButton('CSV', 'csv', 'text/csv', () => cardsToCsv(filled())),
-        exportButton('JSON', 'json', 'application/json', () =>
-          JSON.stringify(buildBackup({ decks: [deck], cards: filled() }), null, 2)),
+        exportButton('JSON', 'json', 'application/json', async () => {
+          queueSave.flush(); saveDeck.flush(); await flushCards(); // include edits typed a moment ago
+          return JSON.stringify(await exportBackup([deckId]), null, 2); // via the data layer: includes pictures
+        }),
       ),
       h('p', { class: 'muted hint' }, 'Tab: term → definition · Enter: new card · Shift+Enter: new line · Alt+↑/↓ or drag ⋮⋮ to reorder'),
     ),

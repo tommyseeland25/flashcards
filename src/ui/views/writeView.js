@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { studyHeader, deckNotFound, usableCards } from '../studyShell.js';
-import { askWritten, continuePanel } from '../quiz.js';
+import { askWritten, continuePanel, promptBlock } from '../quiz.js';
+import { loadImageUrls } from '../../data/images.js';
 import { getDeck } from '../../data/decks.js';
 import { listCards } from '../../data/cards.js';
 import { recordAnswer, recordSession } from '../../data/stats.js';
@@ -13,6 +14,7 @@ export async function writeView([deckId], root) {
   root.append(studyHeader(deck, 'write'));
   const usable = usableCards(cards, deck, root);
   if (!usable) return;
+  await loadImageUrls(usable);
 
   let queue = [];
   let index = 0;
@@ -52,7 +54,7 @@ export async function writeView([deckId], root) {
       },
     });
     show({
-      el: h('div', {}, h('p', { class: 'muted' }, 'Type the definition'), h('div', { class: 'quiz-prompt' }, card.term), widget.el),
+      el: h('div', {}, h('p', { class: 'muted' }, 'Type the definition'), promptBlock(card.term, card.imageId), widget.el),
       dispose: widget.dispose,
     });
   }
