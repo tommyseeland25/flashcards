@@ -11,7 +11,10 @@ export function h(tag, props = {}, ...children) {
     if (key.startsWith('on')) el.addEventListener(key.slice(2).toLowerCase(), value);
     else if (key === 'class') el.className = value;
     else if (key === 'dataset') Object.assign(el.dataset, value);
-    else if (key in el) el[key] = value;
+    else if (key in el) {
+      // Some DOM properties are read-only (e.g. input.list); those can only be set as attributes.
+      try { el[key] = value; } catch { el.setAttribute(key, value === true ? '' : value); }
+    }
     else el.setAttribute(key, value === true ? '' : value);
   }
   el.append(...children.flat(Infinity).filter((c) => c != null && c !== false));

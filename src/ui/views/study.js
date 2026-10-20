@@ -105,7 +105,7 @@ export async function studyView([deckId], root) {
         toggle('Shuffle', (v) => { shuffleCards = v; rebuild(true); }),
         toggle('Starred only', (v) => { starredOnly = v; rebuild(true); }),
       ),
-      h('p', { class: 'muted hint' }, 'Space: flip · ← →: move · S: star'),
+      h('p', { class: 'muted hint' }, 'Space: flip · ← →: move · S: star · L: listen · ?: all shortcuts'),
     ),
   );
   rebuild(false);

@@ -198,3 +198,8 @@ main:focus { outline: none; } /* programmatic focus after navigation; not an int
 .quiz-prompt .card-img { display: block; margin: 0 auto 10px; max-height: 200px; }
 .thumb { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; display: block; }
 .image-btn { padding: 4px; }
+
+/* The face turned away is also hidden from the accessibility tree and text search. The hide is delayed
+   to the middle of the 0.4s flip so the animation looks the same; showing happens immediately. */
+.face { transition: visibility 0s; }
+.face[aria-hidden='true'] { visibility: hidden; transition-delay: 0.2s; }

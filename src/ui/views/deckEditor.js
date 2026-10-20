@@ -231,6 +231,7 @@ export async function deckEditorView([deckId], root) {
       h('a', { class: 'btn primary', href: `#/study/${deckId}` }, 'Study'),
     ),
     h('main', { class: 'page editor' },
+      h('h1', { class: 'sr-only' }, 'Edit deck'),
       textField('Deck title', 'title', 'Deck title'),
       textField('Description', 'description', 'Description (optional)'),
       textField('Tags', 'tags', 'Tags, comma separated'),
