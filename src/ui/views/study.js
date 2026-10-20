@@ -2,13 +2,11 @@ import { h } from '../dom.js';
 import { getDeck } from '../../data/decks.js';
 import { listCards, saveCard } from '../../data/cards.js';
 import { buildQueue } from '../../logic/studyQueue.js';
+import { studyHeader, deckNotFound } from '../studyShell.js';
 
 export async function studyView([deckId], root) {
   const deck = await getDeck(deckId);
-  if (!deck) {
-    root.append(h('p', { class: 'page' }, 'Deck not found. ', h('a', { href: '#/' }, 'Back to decks')));
-    return;
-  }
+  if (!deck) return deckNotFound(root);
   const allCards = await listCards(deckId);
   let queue = [];
   let index = 0;
@@ -94,11 +92,7 @@ export async function studyView([deckId], root) {
     h('label', { class: 'toggle' }, h('input', { type: 'checkbox', onchange: (e) => onChange(e.target.checked) }), label);
 
   root.append(
-    h('header', { class: 'topbar' },
-      h('a', { class: 'btn', href: '#/' }, '← Decks'),
-      h('h1', { class: 'grow' }, deck.title),
-      h('a', { class: 'btn', href: `#/deck/${deckId}` }, 'Edit'),
-    ),
+    studyHeader(deck, 'study'),
     h('main', { class: 'page study' },
       h('div', { class: 'progress' }, progress),
       h('div', { class: 'study-meta' }, counter),
