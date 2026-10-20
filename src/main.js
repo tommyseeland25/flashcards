@@ -1,6 +1,7 @@
 import './styles/base.css';
 import './styles/components.css';
 import { startRouter } from './router.js';
+import { registerServiceWorker } from './pwa.js';
 import { initShortcuts } from './ui/shortcuts.js';
 import { purgeOrphanImages } from './data/images.js';
 import { seedIfFirstRun } from './data/seed.js';
@@ -31,6 +32,7 @@ const routes = [
 ];
 
 initShortcuts();
+registerServiceWorker();
 // Ask the browser not to evict our data under storage pressure (it may ignore this, and that's fine).
 navigator.storage?.persist?.();
 await seedIfFirstRun();
