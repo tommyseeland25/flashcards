@@ -10,6 +10,8 @@ import { learnView } from './ui/views/learnView.js';
 import { writeView } from './ui/views/writeView.js';
 import { testView } from './ui/views/testView.js';
 import { matchView } from './ui/views/matchView.js';
+import { reviewView } from './ui/views/reviewView.js';
+import { statsView } from './ui/views/statsView.js';
 import { studyView } from './ui/views/study.js';
 
 const routes = [
@@ -20,6 +22,8 @@ const routes = [
   [/^\/write\/([^/]+)$/, writeView],
   [/^\/test\/([^/]+)$/, testView],
   [/^\/match\/([^/]+)$/, matchView],
+  [/^\/review(?:\/([^/]+))?$/, reviewView],
+  [/^\/stats$/, statsView],
   [/^\/import(?:\/([^/]+))?$/, importView],
   [/^\/data$/, dataView],
 ];

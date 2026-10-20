@@ -1,7 +1,7 @@
 import { h } from './dom.js';
 import { isComplete } from '../logic/studyQueue.js';
 
-const MODES = [['study', 'Flashcards'], ['learn', 'Learn'], ['write', 'Write'], ['test', 'Test'], ['match', 'Match']];
+const MODES = [['study', 'Flashcards'], ['review', 'Review'], ['learn', 'Learn'], ['write', 'Write'], ['test', 'Test'], ['match', 'Match']];
 
 /** Top bar shared by every study mode: back link, deck title, and the mode switcher. */
 export function studyHeader(deck, current) {
