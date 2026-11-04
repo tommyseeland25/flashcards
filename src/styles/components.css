@@ -50,10 +50,17 @@ input, select {
 .vlist { position: relative; }
 .vlist-content { position: relative; }
 .vlist-row { position: absolute; top: 0; left: 0; right: 0; will-change: transform; }
-.card-row { display: grid; grid-template-columns: 24px 28px 1fr 1fr 36px 36px 36px; gap: 6px; align-items: center; padding: 0 8px; border-bottom: 1px solid var(--border); }
-.card-row .cell { width: 100%; height: 52px; resize: none; padding: 6px 8px; font-size: 0.95rem; line-height: 1.25; }
-.handle { cursor: grab; color: var(--muted); touch-action: none; user-select: none; text-align: center; }
-.row-num { color: var(--muted); font-size: 0.8rem; text-align: right; }
+.card-row { display: grid; grid-template-columns: 24px 28px 1fr 1fr 36px 36px 36px; gap: 6px; align-items: start; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+/* The term/definition boxes grow with their text (see src/ui/autosize.js), so they never need a scrollbar
+   or a drag handle. min-height keeps an empty box about two lines tall. */
+.card-row .cell { width: 100%; padding: 6px 8px; font-size: 0.95rem; line-height: 1.25; --line: calc(0.95rem * 1.25); }
+.autogrow { box-sizing: border-box; overflow: hidden; resize: none; min-height: calc(2 * var(--line, 1.25em) + 14px); }
+/* Browsers with CSS field-sizing size the box to its text by themselves. */
+.autogrow-native { field-sizing: content; }
+/* iPhone Safari zooms the whole page when you focus a field whose text is smaller than 16px. */
+@media (pointer: coarse) { .card-row .cell { font-size: 1rem; --line: calc(1rem * 1.25); } }
+.handle { padding-top: 8px; cursor: grab; color: var(--muted); touch-action: none; user-select: none; text-align: center; }
+.row-num { padding-top: 10px; color: var(--muted); font-size: 0.8rem; text-align: right; }
 .drop-line { position: absolute; left: 0; right: 0; top: -1px; height: 3px; background: var(--accent); pointer-events: none; z-index: 2; }
 @media (max-width: 560px) {
   .card-row { grid-template-columns: 20px 1fr 1fr 32px 32px 32px; }

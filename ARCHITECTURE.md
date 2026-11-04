@@ -20,7 +20,7 @@ About 3,300 lines of JavaScript (+260 of CSS) in `src/`, and about 700 lines of 
 | `index.html` (25 lines) | The only HTML page. Sets the saved theme before first paint, links the manifest and icons, loads `src/main.js`. Everything else is built by JavaScript into `<div id="app">`. |
 | `src/main.js` | Boot sequence. Lists the **routes** (lines 20-32), registers shortcuts and the service worker, seeds the sample deck, starts the router. |
 | `src/router.js` | A ~40-line hash router: URL fragment (`#/stats`) -> a "view" function. |
-| `src/ui/` (UI layer) | Everything that touches the DOM. `dom.js` (the `h()` element builder, `debounce`), `virtualList.js` (windowed list), `quiz.js` (question widgets), `flipCard.js`, `heatmap.js`, `theme.js`, `shortcuts.js`, `speech.js`, `toast.js`, ... |
+| `src/ui/` (UI layer) | Everything that touches the DOM. `dom.js` (the `h()` element builder, `debounce`), `virtualList.js` (windowed list for rows of varying height), `autosize.js` (auto-growing textareas), `quiz.js` (question widgets), `flipCard.js`, `heatmap.js`, `theme.js`, `shortcuts.js`, `speech.js`, `toast.js`, ... |
 | `src/ui/views/` | **One file per screen**: `home`, `deckEditor`, `study` (flashcards), `learn`, `write`, `test`, `match`, `review`, `stats`, `import`, `data` (backup). |
 | `src/logic/` (~830 lines) | **Pure functions**: no DOM, no database, no clock (time is passed in). `scheduler.js` (SM-2), `matching.js`, `learnEngine.js`, `testGenerator.js`, `matchGame.js`, `importParser.js`, `csv.js`, `backup.js`, `analytics.js`, `ordering.js`, `studyQueue.js`, `shuffle.js`, `stats.js`. |
 | `src/data/` (~410 lines) | The **only** code that talks to IndexedDB: `db.js` (schema), `decks.js`, `cards.js`, `stats.js`, `images.js`, `overview.js`, `backup.js`, `seed.js`. |
@@ -90,33 +90,33 @@ We follow it through every file.
 - `router.js:38-39` listens for `hashchange` and runs `navigate()` once immediately.
 - `router.js:21-26` loops over the routes, finds the regex `/^\/deck\/([^/]+)$/` (`main.js:22`) that matches
   `#/deck/<id>`, and extracts the id.
-- `router.js:26` calls `deckEditorView([deckId], root)` (`deckEditor.js:14`). It loads the deck and cards from
-  IndexedDB (`deckEditor.js:15,21`), builds the page, and returns a cleanup function (`:265`).
+- `router.js:26` calls `deckEditorView([deckId], root)` (`deckEditor.js:15`). It loads the deck and cards from
+  IndexedDB (`deckEditor.js:16,22`), builds the page, and returns a cleanup function (`:270`).
 
-**1. The keypress.** Every Term/Definition box is a `<textarea>` built in `renderRow` (`deckEditor.js:45`).
-Its `onkeydown` handler (`:52-53`) sees `Enter` without Shift, calls `e.preventDefault()` (so no newline is
+**1. The keypress.** Every Term/Definition box is a `<textarea>` built in `renderRow` (`deckEditor.js:46`).
+Its `onkeydown` handler (`:54-55`) sees `Enter` without Shift, calls `e.preventDefault()` (so no newline is
 typed) and calls `insertAfter(card)`.
 
-**2. `insertAfter` (`deckEditor.js:126`)** does the work in a deliberate order:
-1. `:127` `cards.indexOf(card)` finds where the current card sits in the in-memory array.
-2. `:128` `newCardAfter(deckId, cards, index)` (`data/cards.js:33`). It is *synchronous*. It asks
+**2. `insertAfter` (`deckEditor.js:131`)** does the work in a deliberate order:
+1. `:132` `cards.indexOf(card)` finds where the current card sits in the in-memory array.
+2. `:133` `newCardAfter(deckId, cards, index)` (`data/cards.js:33`). It is *synchronous*. It asks
    `orderBetween(prev, next)` (`logic/ordering.js:14`) for a sort key between the neighbours: the average of
    the two (`:18`), or last-card-order + 1024 if the new card goes at the end (`:17`). Then `makeCard`
    (`cards.js:5`) builds a plain object with a fresh id (`crypto.randomUUID()`, `db.js:34`), empty text and
    starting spaced-repetition values. **Nothing has been written to the database yet.**
-3. `:129` `cards.splice(index + 1, 0, fresh)` puts it into the array.
-4. `:130` `edited(fresh)` (`:33`) adds it to the `pending` map and calls `queueSave()`, which is
-   `debounce(flushCards, 400)` (`:32`; `debounce` is `dom.js:25`). That (re)starts a 400 ms timer.
-5. `:131` `redraw()` (`:117`) -> `list.setItems(cards)` (`virtualList.js:55`) -> `render()` (`:17`): works out
-   which rows are on screen, and for any row not yet built calls `renderRow` (`:27-28`), which assembles DOM
+3. `:134` `cards.splice(index + 1, 0, fresh)` puts it into the array.
+4. `:135` `edited(fresh)` (`:34`) adds it to the `pending` map and calls `queueSave()`, which is
+   `debounce(flushCards, 400)` (`:33`; `debounce` is `dom.js:25`). That (re)starts a 400 ms timer.
+5. `:136` `redraw()` (`:122`) -> `list.setItems(cards)` (`virtualList.js:128`) -> `render()` (`:52`): works out
+   which rows are on screen, and for any row not yet built calls `renderRow` (`:61`), which assembles DOM
    with the `h()` helper (`dom.js:7`).
-6. `:132-134` scrolls the new row into view and `focus()`es its Term box, so you can type immediately.
+6. `:137-139` scrolls the new row into view and `focus()`es its Term box, so you can type immediately.
 
-**3. You type "ratio".** Each keystroke fires `oninput` (`deckEditor.js:51`): it writes the text onto the
+**3. You type "ratio".** Each keystroke fires `oninput` (`deckEditor.js:53`): it writes the text onto the
 card object (`card.term = ...`) and calls `edited(card)` again. The `pending` map is keyed by card id, so
 it just overwrites the same entry, and `debounce` resets the timer each time (`dom.js:35-37`).
 
-**4. 400 ms of quiet -> the save.** The timer fires `run()` (`dom.js:28`) -> `flushCards` (`deckEditor.js:27`):
+**4. 400 ms of quiet -> the save.** The timer fires `run()` (`dom.js:28`) -> `flushCards` (`deckEditor.js:28`):
 copy the pending cards into `batch`, `pending.clear()`, then `Promise.all(batch.map(saveCard))`.
 `saveCard` (`data/cards.js:45`) does `const db = await getDb()` and `db.put('cards', card)`.
 `getDb` (`data/db.js:13`) opens the database the first time and remembers the promise in `dbPromise`
@@ -124,8 +124,8 @@ copy the pending cards into `batch`, `pending.clear()`, then `Promise.all(batch.
 `cards` store was created with `keyPath: 'id'` (`:19`), so IndexedDB takes the key from `card.id`.
 The card is now on disk.
 
-**5. You navigate away.** `router.js:15` `await destroy?.()` runs the cleanup returned at `deckEditor.js:265`:
-flush any timers (`:266-267`), save pending edits (`:268`) and delete cards left completely empty (`:269-270`).
+**5. You navigate away.** `router.js:15` `await destroy?.()` runs the cleanup returned at `deckEditor.js:270`:
+flush any timers (`:271-272`), save pending edits (`:273`) and delete cards left completely empty (`:274-275`).
 
 Why this design:
 - **Optimistic UI.** The row appears and takes focus *before* any database work. Otherwise fast typists could
@@ -136,7 +136,7 @@ Why this design:
 
 Honest weak spots in this path:
 - A fresh blank card *is* written to the database 400 ms after you create it (`edited(fresh)`). If you close
-  the tab instead of navigating away, the cleanup (`:265`) never runs and the empty card stays. The study
+  the tab instead of navigating away, the cleanup (`:270`) never runs and the empty card stays. The study
   modes skip empty cards (`logic/studyQueue.js`), so it is harmless but untidy.
 - If you close the tab within 400 ms of typing, that last bit of typing is lost; there is no
   `beforeunload` flush.
@@ -162,7 +162,7 @@ cards whose orders are 1024, 2048 and 3072:
 1. You press Enter in card 2. What is the new card's order?
 2. Now you press Enter in that *new* card. What is the next new card's order?
 3. You press Enter in card 3 (the last one).
-4. You press Alt+ArrowUp on card 3 (`moveBy`, `deckEditor.js:138`). Which two `order` values does
+4. You press Alt+ArrowUp on card 3 (`moveBy`, `deckEditor.js:143`). Which two `order` values does
    `orderForMove` (`ordering.js:30`) average, and what does it return?
 
 Then check yourself by reading `tests/ordering.test.js`, or by running the app and inspecting IndexedDB in

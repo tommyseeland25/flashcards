@@ -46,6 +46,7 @@ src/
   router.js        hash router (#/, #/deck/:id, #/study/:id); runs each view's cleanup on leave
   logic/           PURE functions, no DOM or database, unit-tested
     ordering.js      card ordering by midpoint (one write per move/insert)
+    layout.js        row-offset maths for the variable-height list; textarea fit height
     studyQueue.js    which cards a study session shows (starred filter, shuffle)
     shuffle.js       Fisher-Yates
     importParser.js  pasted text -> cards (configurable separators, Quizlet format), skipped-line reports
@@ -68,7 +69,8 @@ src/
     seed.js          sample deck + large test deck
   ui/
     dom.js           h() element helper, debounce
-    virtualList.js   windowed list for fixed-height rows (keeps 1,000+ card decks fast)
+    virtualList.js   windowed list; measures each row's real height (keeps 1,000+ card decks fast)
+    autosize.js      auto-growing textareas (CSS field-sizing, with a measuring fallback)
     toast.js download.js
     studyShell.js    header + mode switcher shared by all study modes
     theme.js         light / dark / system (saved in localStorage, applied before first paint)

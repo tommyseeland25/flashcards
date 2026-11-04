@@ -6,10 +6,11 @@ import { cardsToCsv, cardsToText } from '../../logic/csv.js';
 import { exportBackup } from '../../data/backup.js';
 import { saveImage, loadImageUrls, imageUrl } from '../../data/images.js';
 import { shrinkImage } from '../imageTools.js';
+import { autoGrow } from '../autosize.js';
 import { getDeck, updateDeck } from '../../data/decks.js';
 import { listCards, addCard, newCardAfter, saveCard, deleteCard, moveCard } from '../../data/cards.js';
 
-const ROW_HEIGHT = 64; // fits a two-line textarea; the virtual list needs fixed-height rows
+const ESTIMATED_ROW_HEIGHT = 64; // first guess for rows not measured yet (a two-line card); real heights are measured
 
 export async function deckEditorView([deckId], root) {
   let deck = await getDeck(deckId);
@@ -35,7 +36,7 @@ export async function deckEditorView([deckId], root) {
   const saveDeck = debounce(async () => { deck = await updateDeck(deck); }, 400);
 
   // ---- list ----
-  const list = createVirtualList({ rowHeight: ROW_HEIGHT, renderRow, className: 'editor-list' });
+  const list = createVirtualList({ estimatedRowHeight: ESTIMATED_ROW_HEIGHT, renderRow, className: 'editor-list' });
   const dropLine = h('div', { class: 'drop-line', hidden: true });
   list.content.append(dropLine);
   const count = h('span', { class: 'muted' });
@@ -43,11 +44,12 @@ export async function deckEditorView([deckId], root) {
   const announce = (text) => { live.textContent = text; };
 
   function renderRow(card) {
-    // A textarea (not an input) so multi-line cards keep their line breaks when edited.
+    // A textarea (not an input) so multi-line cards keep their line breaks when edited, and so the
+    // box can grow to show everything you typed (see autosize.js).
     // Enter adds a card; Shift+Enter inserts a new line; Alt+Up/Down moves the card.
-    const field = (name, label) =>
-      h('textarea', {
-        value: card[name], placeholder: label, 'aria-label': label, class: 'cell', rows: 2,
+    const field = (name, label) => {
+      const textarea = h('textarea', {
+        value: card[name], placeholder: label, 'aria-label': label, class: 'cell',
         oninput: (e) => { card[name] = e.target.value; edited(card); },
         onkeydown: (e) => {
           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); insertAfter(card); }
@@ -57,6 +59,9 @@ export async function deckEditorView([deckId], root) {
           }
         },
       });
+      autoGrow(textarea);
+      return textarea;
+    };
 
     const star = h('button', {
       class: `icon-btn star ${card.starred ? 'on' : ''}`, title: 'Star', 'aria-pressed': card.starred,
@@ -186,7 +191,7 @@ export async function deckEditorView([deckId], root) {
     // Line sits above the target row when moving up, below it when moving down.
     const showLine = () => {
       to = list.indexAtClientY(lastY);
-      dropLine.style.transform = `translateY(${(to > from ? to + 1 : to) * ROW_HEIGHT}px)`;
+      dropLine.style.transform = `translateY(${list.offsetOf(to > from ? to + 1 : to)}px)`;
     };
     let raf = requestAnimationFrame(autoScroll);
 
