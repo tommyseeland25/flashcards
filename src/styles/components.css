@@ -78,9 +78,22 @@ input, select {
 .study-card.flipped .flipper { transform: rotateY(180deg); }
 .face {
   position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
-  display: flex; align-items: center; justify-content: center; text-align: center;
-  padding: 24px 48px; font-size: clamp(1.2rem, 4vw, 2rem); overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  display: flex; flex-direction: column;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; /* long text scrolls inside the card, not the page */
+  text-align: center; font-size: clamp(1.2rem, 4vw, 2rem); white-space: pre-wrap; overflow-wrap: anywhere;
   background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow);
+}
+/* WHY an inner body instead of centring with `justify-content: center` / `align-items: center`:
+   when content is taller than a centred flex container, the overflow is split equally above and
+   below, and a scroll box can only scroll DOWN from its top edge, so the top part becomes unreachable.
+   Auto margins behave differently: free space is shared out only when there IS free space. Short text
+   gets equal margins above and below (centred, exactly as before); long text gets zero margins and
+   simply starts at the top and scrolls. The padding lives on the body (not the face) so the space
+   under the last line is part of the scrollable area in every browser. */
+.face-body {
+  flex: none; /* never shrink to the card height: it must grow with the text so the face can scroll */
+  margin-block: auto; width: 100%; padding: 24px 48px; /* 48px sides keep text clear of the star and speaker buttons */
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
 }
 .face.back { transform: rotateY(180deg); }
 .controls, .options { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
@@ -200,7 +213,6 @@ main:focus { outline: none; } /* programmatic focus after navigation; not an int
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .stage .speak { position: absolute; top: 10px; left: 10px; z-index: 2; font-size: 1.3rem; }
 
-.face { flex-direction: column; gap: 12px; }
 .card-img { max-width: 100%; max-height: 160px; object-fit: contain; border-radius: 8px; }
 .quiz-prompt .card-img { display: block; margin: 0 auto 10px; max-height: 200px; }
 .thumb { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; display: block; }
